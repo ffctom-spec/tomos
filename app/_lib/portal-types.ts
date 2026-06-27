@@ -207,6 +207,7 @@ export type CreativeBriefRequest = {
   topic: string;
   context: string;
   objective: string;
+  audience: string;
   tone: string;
   channel: string;
   postType: string;
@@ -225,12 +226,41 @@ export type CreativeBriefResponse = {
     opportunityScore: number;
     disclaimer: string;
   };
+  founderContext: {
+    coreMessage: string;
+    readerAction: string;
+    saveReason: string;
+    emotionalValue: string;
+    brandMeaning: string;
+    assumedContext: string;
+  };
+  knowledgeConfidence: {
+    easyToUse: string[];
+    conditional: string[];
+    needsVerification: string[];
+    saferPhrases: string[];
+  };
+  creativeAngles: Array<{
+    name: string;
+    title: string;
+    intent: string;
+    audience: string;
+    saveReason: string;
+    format: string;
+    visualDirection: string;
+    seriesPotential: string;
+    firstSlideCopy: string;
+  }>;
   concept: {
     summary: string;
     conclusion: string;
     visualDirection: string;
     carouselPlan: string[];
     reelHook: string;
+    firstSlideCopy: string;
+    subtitle: string;
+    reelCuts: string[];
+    telopIdeas: string[];
   };
   titleOptions: string[];
   leadOptions: string[];

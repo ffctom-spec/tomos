@@ -336,8 +336,18 @@ export function PortalShell() {
             onBack={goBack}
             onCreativeBriefGenerated={() => {
               logAction(
+                "Founder context analyzed",
+                `${selectedApproval.title} の背景メモから投稿意図とブランド文脈をAI解釈。`,
+                "Content Creation Flow",
+              );
+              logAction(
                 "AI Creative Brief generated",
                 "投稿案を生成。AI需要仮説、投稿コンセプト、投稿例をPublish Reviewへ反映。",
+                "Content Creation Flow",
+              );
+              logAction(
+                "AI Creative Angles generated",
+                "3つの投稿切り口とSeries Opportunityを生成。",
                 "Content Creation Flow",
               );
               logAction(

@@ -33,8 +33,9 @@ const channels = ["Instagram", "YouTube", "Threads"] as const;
 const postTypes = ["Carousel", "Reel", "Photo post"] as const;
 const structures = ["保存版ガイド", "Before / After", "3つのポイント", "FAQ型"] as const;
 const assets = ["AI推奨アセット", "ブランド写真 01", "商品・施工写真 02", "後で選ぶ"] as const;
-const objectives = ["保存を増やす", "認知を広げる", "商品導線をつくる", "問い合わせを増やす"] as const;
-const tones = ["専門的で信頼感", "親しみやすい", "高級感・ブランド感", "カリフォルニアモダン"] as const;
+const objectives = ["保存を増やす", "認知を広げる", "信頼をつくる", "商品導線をつくる", "問い合わせを増やす"] as const;
+const audiences = ["家庭菜園の初心者", "庭づくりを始めた人", "ドライガーデン好き", "植物を元気にしたい人", "ライフスタイル・循環に関心がある人"] as const;
+const tones = ["専門的で信頼感", "親しみやすく実践的", "カリフォルニアモダン", "上質でブランド感", "ナチュラルで暮らし寄り"] as const;
 
 const fallbackApproval: ApprovalItem = {
   id: "demo-approval",
@@ -96,12 +97,14 @@ export function ContentCreationFlow({
   const [topic, setTopic] = useState(approval.title);
   const [context, setContext] = useState("");
   const [objective, setObjective] = useState<(typeof objectives)[number]>("保存を増やす");
+  const [audience, setAudience] = useState<(typeof audiences)[number]>("家庭菜園の初心者");
   const [tone, setTone] = useState<(typeof tones)[number]>("専門的で信頼感");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState("");
   const [creativeBrief, setCreativeBrief] =
     useState<CreativeBriefResponse | null>(null);
   const [selectedTitle, setSelectedTitle] = useState("");
+  const [selectedFirstCopy, setSelectedFirstCopy] = useState("");
   const [editableBody, setEditableBody] = useState("");
   const [saved, setSaved] = useState(false);
   const [uploadedAsset, setUploadedAsset] = useState<UploadedAsset | null>(null);
@@ -132,7 +135,7 @@ export function ContentCreationFlow({
       2: "Post type",
       3: "Structure",
       4: "Asset",
-      5: "AI Creative Brief",
+      5: "Founder Context Brain",
       6: "Publish Review",
     };
 
@@ -169,6 +172,7 @@ export function ContentCreationFlow({
         topic,
         context,
         objective,
+        audience,
         tone,
         channel,
         postType,
@@ -178,6 +182,7 @@ export function ContentCreationFlow({
       });
       setCreativeBrief(result);
       setSelectedTitle(result.finalPost.title);
+      setSelectedFirstCopy(result.concept.firstSlideCopy);
       setEditableBody(result.finalPost.body);
       setStep(6);
       onCreativeBriefGenerated?.();
@@ -228,8 +233,21 @@ export function ContentCreationFlow({
 
     setVariantIndex(nextIndex);
     setSelectedTitle(nextTitle);
+    setSelectedFirstCopy(creativeBrief.concept.firstSlideCopy);
     setEditableBody(
       `${nextLead}\n\n${creativeBrief.finalPost.body}\n\n別案ポイント: ${structure}として、1枚目で結論をより短く見せる構成です。`,
+    );
+  }
+
+  function adoptCreativeAngle(
+    angle: CreativeBriefResponse["creativeAngles"][number],
+  ) {
+    if (!creativeBrief) return;
+
+    setSelectedTitle(angle.title);
+    setSelectedFirstCopy(angle.firstSlideCopy);
+    setEditableBody(
+      `${angle.title}\n\n${creativeBrief.finalPost.lead}\n\n狙い: ${angle.intent}\n\n${creativeBrief.finalPost.body}`,
     );
   }
 
@@ -305,6 +323,7 @@ export function ContentCreationFlow({
                 context={context}
                 generationError={generationError}
                 isGenerating={isGenerating}
+                audience={audience}
                 objective={objective}
                 simulation={simulation}
                 tone={tone}
@@ -312,6 +331,7 @@ export function ContentCreationFlow({
                 onBack={goPrevious}
                 onContextChange={setContext}
                 onGenerate={generateBrief}
+                onAudienceChange={setAudience}
                 onObjectiveChange={setObjective}
                 onToneChange={setTone}
                 onTopicChange={setTopic}
@@ -360,12 +380,14 @@ export function ContentCreationFlow({
             isGenerating={isGenerating}
             postType={postType}
             saved={saved}
+            selectedFirstCopy={selectedFirstCopy}
             selectedTitle={selectedTitle}
             seriesOpportunities={getSeriesOpportunities(topic, structure)}
             simulation={simulation}
             structure={structure}
             onAdjust={() => setStep(5)}
             onAddSeries={addSeriesOpportunity}
+            onAngleAdopt={adoptCreativeAngle}
             onBodyChange={setEditableBody}
             onRegenerate={generateLocalVariant}
             onSave={saveDraft}
@@ -400,10 +422,10 @@ function getPostSimulation({
   const reelBoost = postType === "Reel" ? 7 : 0;
   const topicFit = 84 + (structure === "3つのポイント" ? 4 : 0);
   const savePotential = Math.min(96, 72 + saveBoost + carouselBoost + (hasImage ? 5 : -8));
-  const ctaStrength = 78 + (structure === "保存版ガイド" ? 5 : 0);
+  const trustSignal = 78 + (structure === "保存版ガイド" ? 5 : 0);
   const seriesPotential = 82 + (structure === "Before / After" ? 6 : 0);
   const total = Math.round(
-    (topicFit + visualFit + savePotential + ctaStrength + seriesPotential) / 5,
+    (topicFit + visualFit + savePotential + trustSignal + seriesPotential) / 5,
   );
   const reachBase = 2600 + carouselBoost * 90 + reelBoost * 140 + (hasImage ? 900 : -650);
   const savesBase = 120 + saveBoost * 9 + carouselBoost * 8 + (hasImage ? 45 : -35);
@@ -418,7 +440,7 @@ function getPostSimulation({
       { label: "Topic Fit", value: topicFit },
       { label: "Visual Fit", value: visualFit },
       { label: "Save Potential", value: savePotential },
-      { label: "CTA Strength", value: ctaStrength },
+      { label: "Trust Signal", value: trustSignal },
       { label: "Series Potential", value: seriesPotential },
     ],
     performance: [
@@ -572,6 +594,7 @@ function CreativeBriefForm({
   context,
   generationError,
   isGenerating,
+  audience,
   objective,
   simulation,
   tone,
@@ -579,6 +602,7 @@ function CreativeBriefForm({
   onContextChange,
   onBack,
   onGenerate,
+  onAudienceChange,
   onObjectiveChange,
   onToneChange,
   onTopicChange,
@@ -586,6 +610,7 @@ function CreativeBriefForm({
   context: string;
   generationError: string;
   isGenerating: boolean;
+  audience: (typeof audiences)[number];
   objective: (typeof objectives)[number];
   simulation: PostSimulation;
   tone: (typeof tones)[number];
@@ -593,6 +618,7 @@ function CreativeBriefForm({
   onBack: () => void;
   onContextChange: (value: string) => void;
   onGenerate: () => void;
+  onAudienceChange: (value: (typeof audiences)[number]) => void;
   onObjectiveChange: (value: (typeof objectives)[number]) => void;
   onToneChange: (value: (typeof tones)[number]) => void;
   onTopicChange: (value: string) => void;
@@ -600,19 +626,25 @@ function CreativeBriefForm({
   return (
     <div>
       <p className="text-sm leading-6 text-zinc-400">
-        テーマを短く入力するだけで、AIが投稿企画・需要仮説・投稿例まで作成します。
+        テーマの背景や、あなたが大事にしたいことを短く入力するだけで、AIが投稿の意図・見せ方・文章案・次のシリーズまで提案します。
       </p>
       <div className="mt-5 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
         <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-          AI投稿の狙い
+          AIが読み取った投稿の背景
         </p>
-        <p className="mt-3 text-sm leading-6 text-zinc-300">
-          “0円でできる”のような低ハードルな切り口で、初心者の保存行動と次の実践を狙う投稿です。
+        <p className="mt-3 text-xs leading-5 text-zinc-500">
+          AI解釈。違う場合は編集できます。
         </p>
+        <FounderContextPreview
+          audience={audience}
+          context={context}
+          objective={objective}
+          topic={topic}
+        />
       </div>
       <div className="mt-5 grid gap-4">
         <label className="grid gap-2 text-sm">
-          投稿テーマ / タイトル
+          投稿テーマ
           <input
             className="min-h-12 rounded-2xl border border-white/10 bg-black/40 px-4 text-white outline-none focus:border-white/30"
             onChange={(event) => onTopicChange(event.target.value)}
@@ -621,11 +653,11 @@ function CreativeBriefForm({
           />
         </label>
         <label className="grid gap-2 text-sm">
-          補足コンテキスト
+          背景メモ / 会話メモ
           <textarea
             className="min-h-24 rounded-2xl border border-white/10 bg-black/40 p-4 text-white outline-none focus:border-white/30"
             onChange={(event) => onContextChange(event.target.value)}
-            placeholder="初心者向け、梅雨前、家庭菜園で使える内容"
+            placeholder="食卓に並ぶゆで卵の殻を捨てずに、家庭菜園や庭の土づくりに活かせることを伝えたい。0円で始められる身近な素材として見せたい。"
             value={context}
           />
         </label>
@@ -638,7 +670,15 @@ function CreativeBriefForm({
           />
         </div>
         <div>
-          <p className="mb-2 text-sm">トーン</p>
+          <p className="mb-2 text-sm">読者</p>
+          <OptionGrid
+            current={audience}
+            items={audiences}
+            onSelect={onAudienceChange}
+          />
+        </div>
+        <div>
+          <p className="mb-2 text-sm">表現トーン</p>
           <OptionGrid current={tone} items={tones} onSelect={onToneChange} />
         </div>
       </div>
@@ -654,6 +694,44 @@ function CreativeBriefForm({
           {isGenerating ? "AIが投稿案を作成中…" : "AIに投稿案を作る"}
         </PillButton>
       </div>
+    </div>
+  );
+}
+
+function FounderContextPreview({
+  audience,
+  context,
+  objective,
+  topic,
+}: {
+  audience: string;
+  context: string;
+  objective: string;
+  topic: string;
+}) {
+  const hasEggshell = context.includes("卵") || topic.includes("卵") || topic.includes("殻");
+  const coreMessage = hasEggshell
+    ? "お金をかけなくても、日常の中に土づくりの入口があること。"
+    : `${topic}を、難しい専門知識ではなく実践の入口として伝えること。`;
+
+  return (
+    <div className="mt-4 grid gap-3">
+      {[
+        ["本当に伝えたいこと", coreMessage],
+        ["読者に起こしたい行動", `${audience}が、保存して小さく試すこと。`],
+        ["保存される理由", "無料・身近・すぐ試せる・後で見返せる判断基準があるため。"],
+        ["この投稿の感情的な価値", "難しそうな園芸を、暮らしの中の小さな発見へ変える安心感。"],
+        ["ブランドにとっての意味", "TOMOSが、断片的な会話やアイデアをブランド資産へ変換するOSであること。"],
+        ["AIが推定した前提", `${objective}を主目的にしたAI仮説です。`],
+      ].map(([label, value]) => (
+        <div
+          className="rounded-2xl border border-white/10 bg-black/30 p-4"
+          key={label}
+        >
+          <p className="text-xs text-zinc-500">{label}</p>
+          <p className="mt-2 text-sm leading-6 text-zinc-300">{value}</p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -730,12 +808,14 @@ function PublishReviewCard({
   isGenerating,
   postType,
   saved,
+  selectedFirstCopy,
   selectedTitle,
   seriesOpportunities,
   simulation,
   structure,
   onAdjust,
   onAddSeries,
+  onAngleAdopt,
   onBodyChange,
   onRegenerate,
   onSave,
@@ -751,12 +831,14 @@ function PublishReviewCard({
   isGenerating: boolean;
   postType: string;
   saved: boolean;
+  selectedFirstCopy: string;
   selectedTitle: string;
   seriesOpportunities: SeriesOpportunity[];
   simulation: PostSimulation;
   structure: string;
   onAdjust: () => void;
   onAddSeries: (title: string) => void;
+  onAngleAdopt: (angle: CreativeBriefResponse["creativeAngles"][number]) => void;
   onBodyChange: (value: string) => void;
   onRegenerate: () => void;
   onSave: () => void;
@@ -775,6 +857,7 @@ function PublishReviewCard({
           cta={brief.finalPost.cta}
           lead={brief.finalPost.lead}
           postType={postType}
+          selectedFirstCopy={selectedFirstCopy}
           selectedTitle={selectedTitle}
           uploadedAsset={uploadedAsset}
         />
@@ -783,6 +866,47 @@ function PublishReviewCard({
           Publish Review
         </p>
         <h2 className="mt-3 text-3xl font-semibold">この内容を投稿しますか？</h2>
+
+        <div className="mt-5 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+          <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+            AI Post Concept Preview
+          </p>
+          <div className="mt-4 grid gap-3">
+            {[
+              ["採用したタイトル", selectedTitle],
+              ["1枚目コピー", selectedFirstCopy],
+              ["小見出し", brief.concept.subtitle],
+              ["Visual Direction", brief.concept.visualDirection],
+              ["Instagram caption", brief.finalPost.instagramCaption],
+              ["商品導線", brief.finalPost.productPath],
+            ].map(([label, value]) => (
+              <div
+                className="rounded-2xl border border-white/10 bg-black/30 p-4"
+                key={label}
+              >
+                <p className="text-xs text-zinc-500">{label}</p>
+                <p className="mt-2 text-sm leading-6 text-zinc-300">{value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 grid gap-2">
+            {brief.concept.carouselPlan.slice(0, 5).map((item) => (
+              <p className="text-xs leading-5 text-zinc-500" key={item}>
+                {item}
+              </p>
+            ))}
+          </div>
+          <div className="mt-4 grid gap-2">
+            {brief.concept.reelCuts.map((item) => (
+              <p className="text-xs leading-5 text-zinc-400" key={item}>
+                Reel: {item}
+              </p>
+            ))}
+          </div>
+          <p className="mt-4 text-sm leading-6 text-zinc-300">
+            AIコメント: {brief.aiComment}
+          </p>
+        </div>
 
         <div className="mt-5 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
           <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
@@ -831,6 +955,14 @@ function PublishReviewCard({
             Reel hook: {brief.concept.reelHook}
           </p>
         </div>
+
+        <KnowledgeConfidenceCard brief={brief} />
+
+        <CreativeAnglesCard
+          angles={brief.creativeAngles}
+          selectedTitle={selectedTitle}
+          onAdopt={onAngleAdopt}
+        />
 
         <div className="mt-4">
           <p className="mb-3 text-sm text-zinc-400">タイトル候補</p>
@@ -968,6 +1100,7 @@ function PostPreview({
   cta,
   lead,
   postType,
+  selectedFirstCopy,
   selectedTitle,
   uploadedAsset,
 }: {
@@ -976,6 +1109,7 @@ function PostPreview({
   cta: string;
   lead: string;
   postType: string;
+  selectedFirstCopy: string;
   selectedTitle: string;
   uploadedAsset: UploadedAsset | null;
 }) {
@@ -1027,10 +1161,139 @@ function PostPreview({
           <span className="text-xl">▱</span>
         </div>
         <p className="text-sm font-semibold">{selectedTitle}</p>
+        <p className="mt-2 text-base font-semibold text-white">{selectedFirstCopy}</p>
         <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-400">{lead}</p>
         <p className="mt-3 text-xs text-zinc-500">
           ハッシュタグ 5件 / CTA: {cta}
         </p>
+      </div>
+    </div>
+  );
+}
+
+function KnowledgeConfidenceCard({
+  brief,
+}: {
+  brief: CreativeBriefResponse;
+}) {
+  return (
+    <div className="mt-4 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+      <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+        Knowledge Confidence
+      </p>
+      <p className="mt-3 text-xs leading-5 text-zinc-500">
+        AI解釈。栽培・科学・植物生理に関する断定は避け、必要に応じて確認してください。
+      </p>
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <ConfidenceColumn
+          items={brief.knowledgeConfidence.easyToUse}
+          title="そのまま使いやすい表現"
+        />
+        <ConfidenceColumn
+          items={brief.knowledgeConfidence.conditional}
+          title="条件付きで表現"
+        />
+        <ConfidenceColumn
+          items={brief.knowledgeConfidence.needsVerification}
+          title="根拠確認が必要"
+        />
+      </div>
+      <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-4">
+        <p className="text-xs text-zinc-500">安全な言い換え案</p>
+        <div className="mt-2 grid gap-2">
+          {brief.knowledgeConfidence.saferPhrases.map((phrase) => (
+            <p className="text-sm leading-6 text-zinc-300" key={phrase}>
+              {phrase}
+            </p>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConfidenceColumn({
+  items,
+  title,
+}: {
+  items: string[];
+  title: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+      <p className="text-xs text-zinc-500">{title}</p>
+      <div className="mt-3 grid gap-2">
+        {items.map((item) => (
+          <p className="text-xs leading-5 text-zinc-300" key={item}>
+            {item}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CreativeAnglesCard({
+  angles,
+  selectedTitle,
+  onAdopt,
+}: {
+  angles: CreativeBriefResponse["creativeAngles"];
+  selectedTitle: string;
+  onAdopt: (angle: CreativeBriefResponse["creativeAngles"][number]) => void;
+}) {
+  return (
+    <div className="mt-4 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+      <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+        Creative Angles
+      </p>
+      <div className="mt-4 grid gap-3">
+        {angles.map((angle) => (
+          <div
+            className="rounded-2xl border border-white/10 bg-black/30 p-4"
+            key={angle.name}
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold">{angle.name}</p>
+                <p className="mt-2 text-sm leading-6 text-zinc-300">
+                  {angle.title}
+                </p>
+              </div>
+              <span className="w-fit rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-400">
+                {angle.format}
+              </span>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {[
+                ["狙い", angle.intent],
+                ["想定読者", angle.audience],
+                ["保存される理由", angle.saveReason],
+                ["Visual Direction", angle.visualDirection],
+                ["Series Potential", angle.seriesPotential],
+              ].map(([label, value]) => (
+                <div
+                  className="rounded-2xl border border-white/10 bg-white/[0.035] p-3"
+                  key={label}
+                >
+                  <p className="text-xs text-zinc-500">{label}</p>
+                  <p className="mt-2 text-xs leading-5 text-zinc-300">{value}</p>
+                </div>
+              ))}
+            </div>
+            <button
+              className={`mt-4 min-h-11 w-full rounded-full border px-4 text-sm transition ${
+                selectedTitle === angle.title
+                  ? "border-white bg-white text-black"
+                  : "border-white/10 text-zinc-200 hover:bg-white/10"
+              }`}
+              onClick={() => onAdopt(angle)}
+              type="button"
+            >
+              この案を採用
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );
