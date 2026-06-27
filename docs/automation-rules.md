@@ -8,7 +8,7 @@ The user should not manually check every source, analyze every metric, or prepar
 
 - 毎朝 Daily Brief 作成
 - 毎日 Content Opportunity 抽出
-- 毎週 SNS Health 分析
+- 毎週 SNS Health Intelligence
 - 毎週 Commerce Analytics 更新
 - 毎月 Brand Asset Review
 

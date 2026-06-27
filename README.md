@@ -1,36 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TOMOS
 
-## Getting Started
+TOMOS is a private AI Brand Operating System for user-owned brands, SNS operations, AIO intelligence, content review, commerce analytics, and approval-based execution.
 
-First, run the development server:
+## Beta 0.1 Scope
+
+TOMOS Beta 0.1 is an API-ready demo. The UI shows the intended production operating screen, information architecture, and AI engine structure, while all data is currently mock data.
+
+Current scope:
+
+- Private Workspace / Login required in production
+- TOMOS Command Center
+- Always-on AI Engines
+- Today's Executive Brief
+- Executive Approval workflow
+- Your Brand Portfolio
+- Broadcast Center
+- Content Review AI
+- SNS Health
+- Commerce Analytics
+- Product Opportunity
+- Knowledge Vault
+- 24h Activity Timeline
+- AI Decision Log
+- Automation Rules
+
+The dashboard is locally interactive. Approval actions, broadcast preparation, content rewrite application, system health counters, activity timeline entries, and decision logs update in browser state. State resets on refresh.
+
+## API-Ready Demo
+
+The data layer is separated into:
+
+- `app/_lib/portal-types.ts`
+- `app/_lib/portal-data.ts`
+- `app/_lib/api-client.ts`
+
+`api-client.ts` currently returns mock data and is designed to be replaced by authenticated API calls later.
+
+Health endpoint:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+GET /api/health
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Response:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```json
+{
+  "status": "ok",
+  "app": "TOMOS",
+  "version": "0.1-beta",
+  "mode": "api-ready-demo"
+}
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Planned Integrations
 
-## Learn More
+- Authentication and user workspace isolation
+- Database for user-owned brands, approvals, content assets, and logs
+- OpenAI / Anthropic APIs for research, review, routing, and generation
+- Google / YouTube APIs for content and performance metrics
+- Meta APIs for Instagram and Threads operations
+- Pinterest API for discovery and performance
+- Shopify or commerce APIs for product clicks, orders, and revenue
+- Cron and webhook workers for always-on operation
+- Token encryption for SNS and commerce integrations
 
-To learn more about Next.js, take a look at the following resources:
+## Development
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm install
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Open `http://localhost:3000`.
 
-## Deploy on Vercel
+Run checks:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run lint
+npm run build
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deployment
+
+The app is designed for Vercel deployment.
+
+1. Connect the GitHub repository.
+2. Add production environment variables based on `.env.example`.
+3. Deploy the `main` branch.
+4. Confirm `/api/health` returns `0.1-beta`.
+
+## Next Development Steps
+
+- Add authentication and route protection.
+- Create database schema and persistence layer.
+- Replace mock client functions with authenticated API calls.
+- Add real approval mutations and audit logs.
+- Connect SNS, analytics, commerce, and AI APIs.
+- Add background jobs for Daily Brief, Broadcast Mission, Learning Loop, and Knowledge Vault updates.

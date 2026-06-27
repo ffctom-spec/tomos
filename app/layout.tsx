@@ -13,11 +13,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TOMOS | 24h AI Brand Operating System",
+  title: "TOMOS | Private AI Brand Operating System",
   description:
-    "TOMOS is an always-on AI brand operating system that researches, analyzes, proposes, improves, and routes only executive approvals to the user.",
+    "TOMOS is a private AI operating system for user-owned brands, always-on AI engines, AIO intelligence, content review, commerce analytics, and approval-based execution.",
   keywords: [
     "TOMOS",
+    "Private AI Brand Operating System",
+    "API-ready Demo",
     "AI Brand Operating System",
     "Always-On AI Engine",
     "Command Center",
@@ -28,9 +30,9 @@ export const metadata: Metadata = {
     "Learning Loop",
   ],
   openGraph: {
-    title: "TOMOS | 24h AI Brand Operating System",
+    title: "TOMOS | Private AI Brand Operating System",
     description:
-      "An always-on AI Command Center for research, AIO, SNS, commerce, content review, knowledge assets, learning loops, and executive approvals.",
+      "A private AI operating system for user-owned brands, always-on AI engines, AIO intelligence, content review, commerce analytics, and approval-based execution.",
     siteName: "TOMOS",
     locale: "ja_JP",
     type: "website",
