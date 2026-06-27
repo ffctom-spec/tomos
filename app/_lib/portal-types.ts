@@ -208,3 +208,20 @@ export type IntegrationStatus = {
   status: "Connected" | "API-ready" | "Planned";
   detail: string;
 };
+
+export type PortalView =
+  | "command"
+  | "brief"
+  | "approvals"
+  | "approval-detail"
+  | "brands"
+  | "brand-detail"
+  | "broadcast"
+  | "broadcast-detail"
+  | "content-review"
+  | "sns-health"
+  | "commerce"
+  | "product"
+  | "knowledge"
+  | "knowledge-detail"
+  | "integrations";

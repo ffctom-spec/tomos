@@ -1,14 +1,31 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ApprovalCenterView, ApprovalDetailView } from "@/app/_components/approval-center";
+import { BrandDetailView, BrandPortfolioView } from "@/app/_components/brand-portfolio";
+import { BroadcastCenterView, BroadcastDetailView } from "@/app/_components/broadcast-center";
+import { CommerceAnalyticsView } from "@/app/_components/commerce-analytics";
+import { CommandCenter } from "@/app/_components/command-center";
+import { ContentReviewView } from "@/app/_components/content-review";
+import { ExecutiveBriefView } from "@/app/_components/executive-brief";
+import { IntegrationsPanel } from "@/app/_components/integrations-panel";
+import { KnowledgeDetailView, KnowledgeVaultView } from "@/app/_components/knowledge-vault";
+import { ProductOpportunityView } from "@/app/_components/product-opportunity";
+import { SnsHealthView } from "@/app/_components/sns-health";
+import { GlassCard } from "@/app/_components/view-frame";
 import {
   activityTimeline,
   aiEngines,
   approvalItems,
-  broadcastIdeas,
+  broadcastIdeas as initialBroadcastIdeas,
+  commerceAnalytics,
   contentReview,
   executiveBrief,
+  instagramAnalytics,
   integrationStatuses,
+  knowledgeVaultItems,
+  productOpportunities,
+  snsHealth,
   userBrands,
 } from "@/app/_lib/portal-data";
 import {
@@ -17,74 +34,44 @@ import {
 } from "@/app/_lib/api-client";
 import type {
   ActivityTimelineItem,
-  AiConsoleResponse,
-  AiProvider,
   AiReviewResponse,
   ApprovalItem,
   ApprovalStatus,
+  BroadcastIdea,
   DecisionLog,
-  EngineStatus,
   InstagramAnalytics,
+  KnowledgeVaultItem,
+  PortalView,
+  UserBrand,
 } from "@/app/_lib/portal-types";
 
-const statusStyles: Record<EngineStatus, string> = {
-  Running: "bg-emerald-300/15 text-emerald-100 ring-emerald-300/20",
-  Monitoring: "bg-sky-300/15 text-sky-100 ring-sky-300/20",
-  Queued: "bg-amber-300/15 text-amber-100 ring-amber-300/20",
-  Learning: "bg-violet-300/15 text-violet-100 ring-violet-300/20",
-  "Waiting approval": "bg-white text-black ring-white/40",
-  Paused: "bg-zinc-300/10 text-zinc-300 ring-zinc-300/15",
-};
-
-const approvalLabels: Record<ApprovalStatus, string> = {
-  Pending: "承認待ち",
-  Approved: "承認",
-  "Revision requested": "修正依頼",
-  "On hold": "保留",
-  Rejected: "却下",
-};
-
-const todayBrief = [
-  "今日一番重要な判断",
-  "今日の売上チャンス",
-  "今日作るべきKnowledge Cast",
-  "今日伸びそうなテーマ",
-  "今日やらない方がいいこと",
+const navItems: Array<[string, PortalView]> = [
+  ["Command Center", "command"],
+  ["Executive Brief", "brief"],
+  ["Approval Center", "approvals"],
+  ["Brand Portfolio", "brands"],
+  ["Broadcast Center", "broadcast"],
+  ["Content Review AI", "content-review"],
+  ["SNS Health", "sns-health"],
+  ["Commerce", "commerce"],
+  ["Product", "product"],
+  ["Knowledge Vault", "knowledge"],
+  ["Integrations", "integrations"],
 ];
 
-const quickPrompts = {
-  Broadcast: "今日作るべきBroadcast Missionを1つだけ選び、承認判断の理由を短く出してください。",
-  Review: "今日レビューすべきコンテンツの改善点を、ブランド適合性とAIO観点で要約してください。",
-  Product: "今日の売上チャンスが高い商品候補を1つ選び、理由とリスクを出してください。",
-  Approvals: "承認待ちの中から、今すぐ判断すべき項目を優先順位つきで示してください。",
-  "Executive Brief": "今日のExecutive Briefを5行で再要約してください。",
-};
-
-const connectedServices = [
-  "OpenAI",
-  "Anthropic",
-  "Google",
-  "YouTube",
-  "Instagram",
-  "Threads",
-  "Pinterest",
-  "Shopify",
-  "BASE",
-  "Mercari",
-  "Analytics",
-  "Search Console",
-  "GitHub",
-  "Vercel",
-  "Slack",
-  "Notion",
-  "Cron",
+const quickActions: Array<[string, PortalView]> = [
+  ["承認", "approvals"],
+  ["配信", "broadcast"],
+  ["SNS", "sns-health"],
+  ["商品", "product"],
+  ["連携", "integrations"],
 ];
 
-function addOperationLog(
+function addTimelineLog(
   previous: ActivityTimelineItem[],
   title: string,
   detail: string,
-  engine: string,
+  engine = "TOMOS",
 ) {
   const now = new Date();
   const time = `${String(now.getHours()).padStart(2, "0")}:${String(
@@ -94,72 +81,39 @@ function addOperationLog(
   return [{ id: `local-${now.getTime()}`, time, title, detail, engine }, ...previous];
 }
 
-function SectionTitle({ title, detail }: { title: string; detail?: string }) {
-  return (
-    <div className="mb-4 flex items-end justify-between gap-4">
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.2em] text-zinc-500">
-          Executive Mode
-        </p>
-        <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
-          {title}
-        </h2>
-      </div>
-      {detail ? <p className="text-xs text-zinc-500">{detail}</p> : null}
-    </div>
-  );
-}
-
-function HealthRing({ value }: { value: number }) {
-  return (
-    <div className="relative grid size-24 place-items-center rounded-full bg-[conic-gradient(white_0deg,white_352deg,rgba(255,255,255,0.12)_352deg)] p-1 shadow-[0_0_40px_rgba(255,255,255,0.12)]">
-      <div className="grid size-full place-items-center rounded-full bg-black">
-        <div className="text-center">
-          <p className="text-3xl font-semibold tracking-tight">{value}%</p>
-          <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-zinc-500">
-            Health
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function PortalShell() {
+  const [activeView, setActiveView] = useState<PortalView>("command");
+  const [previousView, setPreviousView] = useState<PortalView>("command");
   const [approvals, setApprovals] = useState<ApprovalItem[]>(approvalItems);
+  const [broadcastIdeas, setBroadcastIdeas] =
+    useState<BroadcastIdea[]>(initialBroadcastIdeas);
   const [timeline, setTimeline] =
     useState<ActivityTimelineItem[]>(activityTimeline);
   const [logs, setLogs] = useState<DecisionLog[]>([]);
-  const [selectedApproval, setSelectedApproval] = useState<ApprovalItem | null>(
-    null,
-  );
-  const [showAssistant, setShowAssistant] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [aiProvider, setAiProvider] = useState<AiProvider>("openai");
-  const [aiPrompt, setAiPrompt] = useState(
-    "今日の判断で、今すぐ承認すべきものを1つだけ教えてください。",
-  );
-  const [aiResponse, setAiResponse] = useState<AiConsoleResponse | null>(null);
-  const [aiStatus, setAiStatus] = useState<"idle" | "loading" | "error">("idle");
-  const [instagram, setInstagram] = useState<InstagramAnalytics | null>(null);
+  const [selectedApproval, setSelectedApproval] = useState<ApprovalItem | null>(null);
+  const [selectedBrand, setSelectedBrand] = useState<UserBrand | null>(null);
+  const [selectedBroadcast, setSelectedBroadcast] =
+    useState<BroadcastIdea | null>(null);
+  const [selectedKnowledge, setSelectedKnowledge] =
+    useState<KnowledgeVaultItem | null>(null);
+  const [instagram, setInstagram] =
+    useState<InstagramAnalytics>(instagramAnalytics);
+  const [reviewContent, setReviewContent] = useState(contentReview.before);
+  const [reviewBrand, setReviewBrand] = useState("VERDNA");
+  const [reviewChannel, setReviewChannel] = useState("Instagram");
   const [reviewResult, setReviewResult] = useState<AiReviewResponse | null>(null);
-  const [reviewStatus, setReviewStatus] = useState<"idle" | "loading" | "error">("idle");
-  const touchStartX = useRef<number | null>(null);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [reviewStatus, setReviewStatus] =
+    useState<"idle" | "loading" | "error">("idle");
 
   useEffect(() => {
     let mounted = true;
 
     getInstagramAnalytics()
       .then((data) => {
-        if (mounted) {
-          setInstagram(data);
-        }
+        if (mounted) setInstagram(data);
       })
       .catch(() => {
-        if (mounted) {
-          setInstagram(null);
-        }
+        if (mounted) setInstagram(instagramAnalytics);
       });
 
     return () => {
@@ -167,170 +121,263 @@ export function PortalShell() {
     };
   }, []);
 
-  const counts = useMemo(
-    () => ({
-      pending: approvals.filter((item) => item.status === "Pending").length,
-      approved: approvals.filter((item) => item.status === "Approved").length,
-      hold: approvals.filter((item) => item.status === "On hold").length,
-      rejected: approvals.filter((item) => item.status === "Rejected").length,
-    }),
+  const pending = useMemo(
+    () => approvals.filter((item) => item.status === "Pending").length,
     [approvals],
   );
 
-  const primaryBrand = userBrands[0];
-  const kpis = [
-    { label: "AIO Score", value: String(primaryBrand.aioScore), detail: "+8" },
-    { label: "SNS Health", value: String(primaryBrand.snsHealth), detail: "Learning" },
-    { label: "Revenue", value: "¥115K", detail: "+12%" },
-    { label: "Knowledge Assets", value: String(primaryBrand.knowledgeAssets), detail: "+9" },
-    { label: "Pending", value: String(counts.pending), detail: "Approval" },
-  ];
+  function navigate(view: PortalView) {
+    setPreviousView(activeView);
+    setActiveView(view);
+  }
 
-  const visibleEngines = aiEngines.filter((engine) =>
-    ["research", "aio", "sns", "commerce", "vault"].includes(engine.id),
-  );
+  function goBack() {
+    if (
+      activeView === "approval-detail" ||
+      activeView === "brand-detail" ||
+      activeView === "broadcast-detail" ||
+      activeView === "knowledge-detail"
+    ) {
+      setActiveView(previousView);
+      return;
+    }
+    setActiveView("command");
+  }
+
+  function logAction(title: string, detail: string, engine = "Executive Approval") {
+    setTimeline((items) => addTimelineLog(items, title, detail, engine));
+    setLogs((items) => [
+      {
+        id: `log-${Date.now()}`,
+        title,
+        basis: detail,
+        expectedEffect: "次のAI Operatingに反映されます。",
+        risk: "Beta 0.2ではローカルstateのみ反映。",
+        nextAction: "必要に応じて次の詳細画面へ進む。",
+      },
+      ...items,
+    ]);
+  }
 
   function updateApproval(id: string, status: ApprovalStatus) {
     const target = approvals.find((item) => item.id === id);
     setApprovals((items) =>
       items.map((item) => (item.id === id ? { ...item, status } : item)),
     );
-    if (!target) return;
-
-    setLogs((items) => [
-      {
-        id: `decision-${Date.now()}`,
-        title: `${target.type}を${approvalLabels[status]}`,
-        basis: `${target.brand} / ${target.title}`,
-        expectedEffect:
-          status === "Approved"
-            ? "AIが配信準備、Knowledge Vault化、Learning Loopへ進みます。"
-            : "AIが次の提案を再調整します。",
-        risk: "Beta 0.2ではブラウザ内状態のみ更新されます。",
-        nextAction:
-          status === "Approved"
-            ? "Broadcast Missionと公開前チェックへ進む。"
-            : "保留または再提案としてExecutive Queueに残す。",
-      },
-      ...items,
-    ]);
+    if (target) {
+      logAction(
+        `${target.type}を${status}`,
+        `${target.brand} / ${target.title} のステータスを変更。`,
+      );
+    }
   }
 
-  function approveBroadcast() {
-    const target = broadcastIdeas[0];
-    setTimeline((items) =>
-      addOperationLog(
-        items,
-        "Broadcast Approved",
-        `${target.title}を${target.suggestedBrand}向けに準備。`,
-        "Executive Mode",
+  function selectApproval(item: ApprovalItem) {
+    setSelectedApproval(item);
+    setPreviousView("approvals");
+    setActiveView("approval-detail");
+  }
+
+  function selectBrand(brand: UserBrand) {
+    setSelectedBrand(brand);
+    setPreviousView("brands");
+    setActiveView("brand-detail");
+  }
+
+  function selectBroadcast(idea: BroadcastIdea) {
+    setSelectedBroadcast(idea);
+    setPreviousView("broadcast");
+    setActiveView("broadcast-detail");
+  }
+
+  function approveBroadcast(id: string) {
+    const target = broadcastIdeas.find((item) => item.id === id);
+    setBroadcastIdeas((items) =>
+      items.map((item) =>
+        item.id === id ? { ...item, status: "Preparing" } : item,
       ),
     );
-  }
-
-  function startLongPress(item: ApprovalItem) {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-    }
-    longPressTimer.current = setTimeout(() => {
-      setSelectedApproval(item);
-    }, 520);
-  }
-
-  function clearLongPress() {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-    }
-  }
-
-  function handleSwipe(item: ApprovalItem, endX: number) {
-    if (touchStartX.current === null) return;
-    const delta = endX - touchStartX.current;
-    touchStartX.current = null;
-
-    if (delta > 64) {
-      updateApproval(item.id, "Approved");
-    }
-    if (delta < -64) {
-      updateApproval(item.id, "On hold");
-    }
-  }
-
-  async function submitAiConsole(prompt = aiPrompt) {
-    setAiStatus("loading");
-    setAiResponse(null);
-    setShowAssistant(true);
-
-    try {
-      const response = await fetch("/api/ai", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          provider: aiProvider,
-          prompt,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("AI Console request failed");
-      }
-
-      const data = (await response.json()) as AiConsoleResponse;
-      setAiResponse(data);
-      setAiStatus("idle");
-      setTimeline((items) =>
-        addOperationLog(
-          items,
-          `${data.provider === "openai" ? "GPT" : "Gemini"} Assistant`,
-          `${data.model} / ${data.mode} modeでExecutive判断を生成。`,
-          "AI Assistant",
-        ),
+    if (target) {
+      logAction(
+        "Broadcast制作承認",
+        `${target.title}を${target.suggestedBrand}向けに制作準備。`,
+        "Broadcast Center",
       );
-    } catch {
-      setAiStatus("error");
     }
   }
 
-  async function runContentReview() {
+  function selectKnowledge(item: KnowledgeVaultItem) {
+    setSelectedKnowledge(item);
+    setPreviousView("knowledge");
+    setActiveView("knowledge-detail");
+  }
+
+  async function runReview() {
     setReviewStatus("loading");
     setReviewResult(null);
 
     try {
       const result = await reviewContentWithAI({
-        content: contentReview.before,
-        brand: "VERDNA",
-        channel: "Instagram",
+        content: reviewContent,
+        brand: reviewBrand,
+        channel: reviewChannel,
       });
       setReviewResult(result);
       setReviewStatus("idle");
-      setTimeline((items) =>
-        addOperationLog(
-          items,
-          "OpenAI Content Review",
-          `${result.model} / ${result.mode} modeでAIO・SEO・SNSレビューを実行。`,
-          "Content Review AI",
-        ),
+      logAction(
+        "AIレビュー実行",
+        `${reviewBrand} / ${reviewChannel} を ${result.model} (${result.mode}) でレビュー。`,
+        "Content Review AI",
       );
     } catch {
       setReviewStatus("error");
     }
   }
 
-  function handleQuickAction(label: keyof typeof quickPrompts) {
-    const prompt = quickPrompts[label];
-    setAiPrompt(prompt);
-    if (label === "Broadcast") {
-      approveBroadcast();
+  function applyRewrite() {
+    if (!reviewResult) return;
+    setReviewContent(reviewResult.rewrite);
+    logAction("リライト適用", "Content Review AIのAfter文を入力欄へ適用。");
+  }
+
+  function renderActiveView() {
+    switch (activeView) {
+      case "brief":
+        return (
+          <ExecutiveBriefView
+            brief={executiveBrief}
+            onBack={goBack}
+            onLog={logAction}
+          />
+        );
+      case "approvals":
+        return (
+          <ApprovalCenterView
+            approvals={approvals}
+            onBack={goBack}
+            onSelect={selectApproval}
+            onUpdate={updateApproval}
+          />
+        );
+      case "approval-detail":
+        return selectedApproval ? (
+          <ApprovalDetailView
+            item={selectedApproval}
+            onBack={goBack}
+            onUpdate={updateApproval}
+          />
+        ) : null;
+      case "brands":
+        return (
+          <BrandPortfolioView
+            brands={userBrands}
+            onBack={goBack}
+            onSelect={selectBrand}
+          />
+        );
+      case "brand-detail":
+        return selectedBrand ? (
+          <BrandDetailView
+            brand={selectedBrand}
+            onBack={goBack}
+            onNavigate={navigate}
+          />
+        ) : null;
+      case "broadcast":
+        return (
+          <BroadcastCenterView
+            ideas={broadcastIdeas}
+            onBack={goBack}
+            onSelect={selectBroadcast}
+            onApprove={approveBroadcast}
+          />
+        );
+      case "broadcast-detail":
+        return selectedBroadcast ? (
+          <BroadcastDetailView
+            idea={selectedBroadcast}
+            onBack={goBack}
+            onApprove={approveBroadcast}
+          />
+        ) : null;
+      case "content-review":
+        return (
+          <ContentReviewView
+            brand={reviewBrand}
+            channel={reviewChannel}
+            content={reviewContent}
+            result={reviewResult}
+            status={reviewStatus}
+            onApply={applyRewrite}
+            onBack={goBack}
+            onBrandChange={setReviewBrand}
+            onChannelChange={setReviewChannel}
+            onContentChange={setReviewContent}
+            onReview={runReview}
+          />
+        );
+      case "sns-health":
+        return (
+          <SnsHealthView
+            instagram={instagram}
+            items={snsHealth}
+            onBack={goBack}
+            onNavigateIntegrations={() => navigate("integrations")}
+          />
+        );
+      case "commerce":
+        return (
+          <CommerceAnalyticsView
+            items={commerceAnalytics}
+            onBack={goBack}
+            onProduct={() => navigate("product")}
+          />
+        );
+      case "product":
+        return (
+          <ProductOpportunityView
+            items={productOpportunities}
+            onAction={(title) => logAction(title, "Product Opportunityで状態変更。")}
+            onBack={goBack}
+          />
+        );
+      case "knowledge":
+        return (
+          <KnowledgeVaultView
+            items={knowledgeVaultItems}
+            onBack={goBack}
+            onSelect={selectKnowledge}
+          />
+        );
+      case "knowledge-detail":
+        return selectedKnowledge ? (
+          <KnowledgeDetailView item={selectedKnowledge} onBack={goBack} />
+        ) : null;
+      case "integrations":
+        return (
+          <IntegrationsPanel
+            integrations={integrationStatuses}
+            onAction={(title) => logAction(title, "Integration操作を記録。", "Integrations")}
+            onBack={goBack}
+          />
+        );
+      case "command":
+      default:
+        return (
+          <CommandCenter
+            approvals={approvals}
+            brief={executiveBrief}
+            engines={aiEngines}
+            timeline={timeline}
+            onNavigate={navigate}
+          />
+        );
     }
-    void submitAiConsole(prompt);
   }
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_-10%,rgba(255,255,255,0.18),transparent_32%),radial-gradient(circle_at_12%_18%,rgba(255,255,255,0.08),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.08),transparent_34%)]" />
-      <div className="pointer-events-none fixed inset-x-0 top-0 z-20 mx-auto h-8 w-36 rounded-b-[2rem] bg-black/80 shadow-[0_12px_50px_rgba(255,255,255,0.08)] ring-1 ring-white/10 sm:hidden" />
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-[1500px] flex-col pb-28 md:px-6 lg:flex-row lg:gap-6 lg:pb-8">
         <aside className="hidden w-72 shrink-0 py-6 lg:block">
@@ -341,596 +388,103 @@ export function PortalShell() {
               </div>
               <div>
                 <p className="text-sm font-semibold tracking-[0.3em]">TOMOS</p>
-                <p className="text-xs text-zinc-500">Beta 0.2 / Operating Center</p>
+                <p className="text-xs text-zinc-500">Beta 0.2 / UX Hierarchy</p>
               </div>
             </div>
-            <div className="mt-8 grid gap-2">
-              {["Executive Dashboard", "AI Engines", "Approval Queue", "KPI", "Timeline", "Integrations"].map(
-                (item) => (
-                  <div
-                    className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-zinc-300 first:bg-white first:text-black"
-                    key={item}
-                  >
-                    {item}
-                  </div>
-                ),
-              )}
-            </div>
-            <div className="mt-8 rounded-2xl border border-white/10 bg-black/30 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
-                Mode
-              </p>
-              <p className="mt-2 text-lg font-semibold">Operating Center</p>
-              <p className="mt-2 text-xs leading-5 text-zinc-500">
-                Desktopは全体把握。MobileはExecutive判断だけに圧縮。
-              </p>
-            </div>
-          </div>
-        </aside>
-
-        <main className="w-full min-w-0 px-4 pt-10 sm:px-6 md:pt-6 lg:px-0">
-          <header className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-5 shadow-2xl shadow-black/50 backdrop-blur-2xl sm:p-7 lg:p-8">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm text-zinc-400">Good Morning,</p>
-                <h1 className="mt-1 text-4xl font-semibold tracking-tight sm:text-6xl">
-                  Tom.
-                </h1>
-              </div>
-              <button
-                className="relative grid size-12 place-items-center rounded-full border border-white/10 bg-black/40 text-xl backdrop-blur-xl transition hover:bg-white/10"
-                onClick={() => setShowNotifications((value) => !value)}
-                type="button"
-              >
-                <span aria-hidden>⌁</span>
-                <span className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-white text-[10px] font-semibold text-black">
-                  {counts.pending}
-                </span>
-              </button>
-            </div>
-
-            <div className="mt-8 grid gap-5 md:grid-cols-[1fr_140px] md:items-end">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
-                  Today
-                </p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight">
-                  2026/06/27
-                </p>
-                <div className="mt-5 inline-flex items-center gap-3 rounded-full border border-white/10 bg-black/35 px-4 py-2 text-sm text-zinc-300">
-                  <span className="size-2 rounded-full bg-emerald-300 shadow-[0_0_18px_rgba(110,231,183,0.9)]" />
-                  AIが24時間動作中
-                </div>
-              </div>
-              <HealthRing value={98} />
-            </div>
-          </header>
-
-          {showNotifications ? (
-            <section className="mt-4 rounded-3xl border border-white/10 bg-zinc-950/90 p-5 backdrop-blur-2xl">
-              <SectionTitle title="Notification Center" detail="live signals" />
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                {[
-                  ["未承認", `${counts.pending}件`],
-                  ["AI提案", "12件"],
-                  ["売上変化", "+12%"],
-                  ["AIO急上昇", "土壌改良"],
-                  ["SNS異常", "Shorts維持率"],
-                ].map(([label, value]) => (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={label}>
-                    <p className="text-xs text-zinc-500">{label}</p>
-                    <p className="mt-2 text-lg font-semibold">{value}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ) : null}
-
-          <section className="mt-5">
-            <SectionTitle title="Today's Executive Brief" detail="5 decisions" />
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-              {todayBrief.map((label, index) => {
-                const item = executiveBrief[index];
-                return (
-                  <article
-                    className="rounded-3xl border border-white/10 bg-white/[0.045] p-5 backdrop-blur-xl"
-                    key={label}
-                  >
-                    <p className="text-xs text-zinc-500">{label}</p>
-                    <h3 className="mt-3 text-lg font-semibold leading-tight">
-                      {item.value}
-                    </h3>
-                    <p className="mt-3 text-sm leading-6 text-zinc-500">
-                      {item.detail}
-                    </p>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="mt-7">
-            <SectionTitle title="Approval Queue" detail="右スワイプ承認 / 左スワイプ保留" />
-            <div className="grid gap-3 xl:grid-cols-2">
-              {approvals.slice(0, 5).map((item) => (
-                <article
-                  className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.055] p-1 backdrop-blur-xl"
-                  key={item.id}
-                  onTouchEnd={(event) =>
-                    handleSwipe(item, event.changedTouches[0]?.clientX ?? 0)
-                  }
-                  onTouchStart={(event) => {
-                    touchStartX.current = event.touches[0]?.clientX ?? null;
-                    startLongPress(item);
-                  }}
-                  onPointerDown={() => startLongPress(item)}
-                  onPointerUp={clearLongPress}
-                  onPointerLeave={clearLongPress}
-                >
-                  <div className="absolute inset-y-0 left-0 grid w-24 place-items-center bg-emerald-300/15 text-xs text-emerald-100">
-                    承認
-                  </div>
-                  <div className="absolute inset-y-0 right-0 grid w-24 place-items-center bg-amber-300/15 text-xs text-amber-100">
-                    保留
-                  </div>
-                  <div className="relative rounded-[1.55rem] bg-black/80 p-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                          {item.type}
-                        </p>
-                        <h3 className="mt-2 text-xl font-semibold leading-tight">
-                          {item.title}
-                        </h3>
-                        <p className="mt-2 text-sm text-zinc-500">{item.brand}</p>
-                      </div>
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black">
-                        {approvalLabels[item.status]}
-                      </span>
-                    </div>
-                    <p className="mt-4 text-sm leading-6 text-zinc-400">
-                      {item.reason}
-                    </p>
-                    <div className="mt-4 grid grid-cols-4 gap-2">
-                      {[
-                        ["承認", "Approved"],
-                        ["修正", "Revision requested"],
-                        ["保留", "On hold"],
-                        ["却下", "Rejected"],
-                      ].map(([label, status]) => (
-                        <button
-                          className={`min-h-10 rounded-full text-xs transition ${
-                            status === "Approved"
-                              ? "bg-white text-black"
-                              : "border border-white/10 text-zinc-300 hover:bg-white/10"
-                          }`}
-                          key={status}
-                          onClick={() =>
-                            updateApproval(item.id, status as ApprovalStatus)
-                          }
-                          type="button"
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="mt-3 text-center text-[11px] text-zinc-600">
-                      swipe right approve / swipe left hold / long press detail
-                    </p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="mt-7">
-            <SectionTitle title="AI Engines" detail="mobile horizontal" />
-            <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-5 md:overflow-visible md:px-0">
-              {visibleEngines.map((engine) => (
-                <article
-                  className="min-w-40 snap-start rounded-3xl border border-white/10 bg-white/[0.045] p-5"
-                  key={engine.id}
-                >
-                  <p className="text-2xl font-semibold">
-                    {engine.name.replace(" Engine", "").replace(" Intelligence", "")}
-                  </p>
-                  <span
-                    className={`mt-4 inline-flex rounded-full px-3 py-1 text-xs ring-1 ${statusStyles[engine.status]}`}
-                  >
-                    {engine.status}
-                  </span>
-                  <p className="mt-4 text-xs leading-5 text-zinc-500">
-                    {engine.lastRun}
-                  </p>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="mt-7">
-            <SectionTitle title="Today's KPI" detail="5 signals only" />
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-              {kpis.map((item) => (
-                <article
-                  className="rounded-3xl border border-white/10 bg-white/[0.055] p-5"
-                  key={item.label}
-                >
-                  <p className="text-xs text-zinc-500">{item.label}</p>
-                  <p className="mt-4 text-3xl font-semibold tracking-tight">
-                    {item.value}
-                  </p>
-                  <p className="mt-2 text-xs text-zinc-500">{item.detail}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="mt-7">
-            <SectionTitle title="Settings / Integrations" detail="API-ready foundation" />
-            <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-              <article className="rounded-[2rem] border border-white/10 bg-white/[0.045] p-5 backdrop-blur-xl">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                      Instagram Integration
-                    </p>
-                    <h3 className="mt-2 text-2xl font-semibold">SNS Health Source</h3>
-                    <p className="mt-2 text-sm leading-6 text-zinc-500">
-                      Business / Creator Account required。現在はMock data、
-                      本番ではMeta Instagram Graph APIへ置き換えます。
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black">
-                    {instagram?.connectionStatus ?? "loading"}
-                  </span>
-                </div>
-                <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-                  {[
-                    ["Account", instagram?.account ?? "Loading"],
-                    ["Last sync", instagram?.lastSync ?? "Loading"],
-                    ["Followers", instagram ? instagram.followers.toLocaleString() : "-"],
-                    ["Reach", instagram ? instagram.reach.toLocaleString() : "-"],
-                    ["Impressions", instagram ? instagram.impressions.toLocaleString() : "-"],
-                    ["Saves", instagram ? instagram.saves.toLocaleString() : "-"],
-                    ["Engagement", instagram?.engagementRate ?? "-"],
-                    ["SNS Health", instagram ? String(instagram.snsHealthScore) : "-"],
-                  ].map(([label, value]) => (
-                    <div className="rounded-2xl border border-white/10 bg-black/35 p-4" key={label}>
-                      <p className="text-xs text-zinc-500">{label}</p>
-                      <p className="mt-2 text-sm font-semibold text-white">{value}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-5 grid gap-2">
-                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                    Top posts
-                  </p>
-                  {(instagram?.topPosts ?? []).map((post) => (
-                    <div className="rounded-2xl border border-white/10 bg-black/30 p-4" key={post.id}>
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="font-medium">{post.title}</p>
-                        <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-400">
-                          {post.engagementRate}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-xs text-zinc-500">
-                        Saves {post.saves} / Reach {post.reach.toLocaleString()}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </article>
-
-              <article className="rounded-[2rem] border border-white/10 bg-white/[0.045] p-5 backdrop-blur-xl">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                      OpenAI Integration
-                    </p>
-                    <h3 className="mt-2 text-2xl font-semibold">GPT Content Review</h3>
-                    <p className="mt-2 text-sm leading-6 text-zinc-500">
-                      OPENAI_API_KEYがあればResponses APIで実行。未設定ならMock結果を返します。
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black">
-                    API-ready
-                  </span>
-                </div>
-                <div className="mt-5 grid grid-cols-2 gap-3">
-                  {[
-                    ["Connection Status", "API-ready"],
-                    ["Model", "OPENAI_MODEL"],
-                    ["Last request", reviewResult ? "just now" : "not yet"],
-                    ["Monthly usage", "placeholder"],
-                  ].map(([label, value]) => (
-                    <div className="rounded-2xl border border-white/10 bg-black/35 p-4" key={label}>
-                      <p className="text-xs text-zinc-500">{label}</p>
-                      <p className="mt-2 text-sm font-semibold">{value}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-5">
-                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                    Connected Engines
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {[
-                      "Executive Brief",
-                      "Content Review AI",
-                      "AIO Intelligence",
-                      "Broadcast Center",
-                      "Product Opportunity",
-                    ].map((engine) => (
-                      <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs text-zinc-400" key={engine}>
-                        {engine}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="mt-5 rounded-2xl border border-white/10 bg-black/35 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                    Content Review AI
-                  </p>
-                  <p className="mt-3 text-sm leading-6 text-zinc-300">
-                    {contentReview.before}
-                  </p>
-                  <button
-                    className="mt-4 min-h-11 w-full rounded-full bg-white px-5 text-sm font-medium text-black disabled:bg-zinc-700 disabled:text-zinc-400"
-                    disabled={reviewStatus === "loading"}
-                    onClick={runContentReview}
-                    type="button"
-                  >
-                    {reviewStatus === "loading" ? "AIレビュー中" : "AIレビュー実行"}
-                  </button>
-                  {reviewStatus === "error" ? (
-                    <p className="mt-3 rounded-2xl bg-red-400/10 p-3 text-sm text-red-100">
-                      AIレビューに失敗しました。OPENAI_API_KEYまたはAPI routeを確認してください。
-                    </p>
-                  ) : null}
-                  {reviewResult ? (
-                    <div className="mt-4 rounded-2xl border border-white/10 bg-black/40 p-4">
-                      <p className="text-xs text-zinc-500">
-                        {reviewResult.model} / {reviewResult.mode}
-                      </p>
-                      <p className="mt-3 text-sm leading-6 text-zinc-300">
-                        {reviewResult.summary}
-                      </p>
-                      <div className="mt-4 grid gap-2">
-                        {reviewResult.scores.map((score) => (
-                          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3" key={score.label}>
-                            <div className="flex items-center justify-between gap-3">
-                              <p className="text-sm font-medium">{score.label}</p>
-                              <span className="text-sm text-zinc-300">{score.score}</span>
-                            </div>
-                            <p className="mt-1 text-xs leading-5 text-zinc-500">{score.note}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              </article>
-            </div>
-            <div className="mt-4 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
-              {integrationStatuses.map((integration) => (
-                <article className="rounded-2xl border border-white/10 bg-white/[0.035] p-4" key={integration.id}>
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium">{integration.name}</p>
-                    <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] text-zinc-400">
-                      {integration.status}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-xs leading-5 text-zinc-500">
-                    {integration.detail}
-                  </p>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="mt-7 grid gap-5 lg:grid-cols-[1fr_380px]">
-            <div>
-              <SectionTitle title="Activity Timeline" detail="today" />
-              <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-5">
-                {[
-                  ["06:00", "Research Complete", "Research Engine"],
-                  ["08:00", "Executive Brief", "Approval Engine"],
-                  ["10:00", "Instagram改善", "SNS Engine"],
-                  ["13:00", "Knowledge Cast生成", "Knowledge Engine"],
-                  ["16:00", "Commerce分析", "Commerce Engine"],
-                  ...timeline.slice(0, 2).map((item) => [
-                    item.time,
-                    item.title,
-                    item.engine,
-                  ]),
-                ].map(([time, title, engine], index) => (
-                  <div className="grid grid-cols-[64px_24px_1fr] gap-3" key={`${time}-${title}-${index}`}>
-                    <p className="pt-1 text-sm font-medium text-zinc-300">{time}</p>
-                    <div className="flex flex-col items-center">
-                      <span className="mt-1 size-2.5 rounded-full bg-white" />
-                      <span className="h-full min-h-10 w-px bg-white/10" />
-                    </div>
-                    <div className="pb-5">
-                      <p className="font-medium text-white">{title}</p>
-                      <p className="mt-1 text-xs text-zinc-500">{engine}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <aside className="hidden lg:block">
-              <SectionTitle title="Connected Future" detail="API-ready" />
-              <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-5">
-                <div className="flex flex-wrap gap-2">
-                  {connectedServices.map((service) => (
-                    <span
-                      className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs text-zinc-400"
-                      key={service}
-                    >
-                      {service}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-5 rounded-3xl border border-white/10 bg-white/[0.045] p-5">
-                <SectionTitle title="Executive Log" detail="local" />
-                <div className="grid gap-3">
-                  {(logs.length ? logs.slice(0, 3) : [
-                    {
-                      id: "empty",
-                      title: "No manual action yet",
-                      basis: "Swipe or tap an approval to create a decision log.",
-                    },
-                  ]).map((log) => (
-                    <div className="rounded-2xl border border-white/10 bg-black/30 p-4" key={log.id}>
-                      <p className="text-sm font-medium">{log.title}</p>
-                      <p className="mt-2 text-xs leading-5 text-zinc-500">
-                        {log.basis}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </aside>
-          </section>
-
-          <section className="mt-7 rounded-3xl border border-white/10 bg-white/[0.045] p-5 lg:hidden">
-            <SectionTitle title="Connected Future" detail="API-ready" />
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {connectedServices.map((service) => (
-                <span
-                  className="shrink-0 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs text-zinc-400"
-                  key={service}
-                >
-                  {service}
-                </span>
-              ))}
-            </div>
-          </section>
-        </main>
-      </div>
-
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-black/75 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 backdrop-blur-2xl">
-        <div className="mx-auto grid max-w-xl grid-cols-5 gap-2">
-          {(Object.keys(quickPrompts) as Array<keyof typeof quickPrompts>).map(
-            (label) => (
-              <button
-                className="min-h-14 rounded-2xl border border-white/10 bg-white/[0.06] px-1 text-[11px] text-zinc-300 transition hover:bg-white/10"
-                key={label}
-                onClick={() => handleQuickAction(label)}
-                type="button"
-              >
-                <span className="block text-lg leading-none">+</span>
-                {label}
-              </button>
-            ),
-          )}
-        </div>
-      </nav>
-
-      <button
-        className="fixed bottom-28 right-5 z-50 grid size-14 place-items-center rounded-full bg-white text-lg font-semibold text-black shadow-[0_16px_70px_rgba(255,255,255,0.22)] transition hover:scale-105"
-        onClick={() => setShowAssistant((value) => !value)}
-        type="button"
-      >
-        T
-      </button>
-
-      {showAssistant ? (
-        <div className="fixed inset-x-3 bottom-44 z-50 mx-auto max-w-md rounded-[2rem] border border-white/10 bg-zinc-950/95 p-4 shadow-2xl shadow-black backdrop-blur-2xl">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                AI Assistant
-              </p>
-              <h2 className="mt-1 text-lg font-semibold">今日の判断を相談</h2>
-            </div>
-            <div className="grid grid-cols-2 gap-1 rounded-full border border-white/10 bg-black/50 p-1">
-              {[
-                ["openai", "GPT"],
-                ["gemini", "Gemini"],
-              ].map(([provider, label]) => (
+            <nav className="mt-8 grid gap-2">
+              {navItems.map(([label, view]) => (
                 <button
-                  className={`rounded-full px-3 py-1 text-xs ${
-                    aiProvider === provider
+                  className={`min-h-11 rounded-xl px-4 text-left text-sm transition ${
+                    activeView === view
                       ? "bg-white text-black"
-                      : "text-zinc-500"
+                      : "border border-white/10 bg-black/30 text-zinc-300 hover:bg-white/10"
                   }`}
-                  key={provider}
-                  onClick={() => setAiProvider(provider as AiProvider)}
+                  key={view}
+                  onClick={() => navigate(view)}
                   type="button"
                 >
                   {label}
                 </button>
               ))}
-            </div>
+            </nav>
+            <GlassCard className="mt-6">
+              <p className="text-xs text-zinc-500">Pending Approvals</p>
+              <p className="mt-2 text-3xl font-semibold">{pending}</p>
+              <p className="mt-2 text-xs leading-5 text-zinc-500">
+                承認後はActivity Timelineへ記録。
+              </p>
+            </GlassCard>
           </div>
-          <textarea
-            className="mt-4 min-h-24 w-full resize-none rounded-2xl border border-white/10 bg-black/50 p-4 text-sm leading-6 text-white outline-none focus:border-white/30"
-            onChange={(event) => setAiPrompt(event.target.value)}
-            value={aiPrompt}
-          />
-          <button
-            className="mt-3 min-h-11 w-full rounded-full bg-white px-5 text-sm font-medium text-black disabled:bg-zinc-700 disabled:text-zinc-400"
-            disabled={aiStatus === "loading"}
-            onClick={() => void submitAiConsole()}
-            type="button"
-          >
-            {aiStatus === "loading" ? "Thinking" : "Ask TOMOS"}
-          </button>
-          {aiStatus === "error" ? (
-            <p className="mt-3 rounded-2xl bg-red-400/10 p-3 text-sm text-red-100">
-              AI接続に失敗しました。環境変数を確認してください。
-            </p>
-          ) : null}
-          {aiResponse ? (
-            <div className="mt-3 max-h-56 overflow-y-auto rounded-2xl border border-white/10 bg-black/50 p-4">
-              <p className="text-xs text-zinc-500">
-                {aiResponse.provider} / {aiResponse.mode} / {aiResponse.model}
-              </p>
-              <p className="mt-3 whitespace-pre-line text-sm leading-7 text-zinc-200">
-                {aiResponse.output}
-              </p>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+        </aside>
 
-      {selectedApproval ? (
-        <div className="fixed inset-0 z-[60] grid place-items-end bg-black/70 p-4 backdrop-blur-sm sm:place-items-center">
-          <div className="w-full max-w-md rounded-[2rem] border border-white/10 bg-zinc-950 p-5">
-            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-              Approval Detail
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold">{selectedApproval.title}</h2>
-            <p className="mt-2 text-sm text-zinc-500">{selectedApproval.type}</p>
-            <p className="mt-4 text-sm leading-7 text-zinc-300">
-              {selectedApproval.reason}
-            </p>
-            <div className="mt-5 grid grid-cols-2 gap-2">
-              <button
-                className="min-h-11 rounded-full bg-white text-sm font-medium text-black"
-                onClick={() => {
-                  updateApproval(selectedApproval.id, "Approved");
-                  setSelectedApproval(null);
-                }}
-                type="button"
-              >
-                承認
-              </button>
-              <button
-                className="min-h-11 rounded-full border border-white/10 text-sm text-zinc-300"
-                onClick={() => setSelectedApproval(null)}
-                type="button"
-              >
-                閉じる
-              </button>
-            </div>
-          </div>
+        <main className="w-full min-w-0 px-4 pt-5 sm:px-6 md:pt-6 lg:px-0">
+          {renderActiveView()}
+
+          <section className="mt-5 grid gap-4 lg:grid-cols-[1fr_360px]">
+            <GlassCard>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold">Activity Timeline</h2>
+                <span className="text-xs text-zinc-500">local state</span>
+              </div>
+              <div className="grid gap-3">
+                {timeline.slice(0, 5).map((item) => (
+                  <div className="grid grid-cols-[64px_1fr] gap-3" key={item.id}>
+                    <p className="text-sm font-medium text-zinc-300">{item.time}</p>
+                    <div>
+                      <p className="text-sm font-medium">{item.title}</p>
+                      <p className="mt-1 text-xs leading-5 text-zinc-500">
+                        {item.engine} / {item.detail}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
+
+            <GlassCard>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold">Decision Log</h2>
+                <span className="text-xs text-zinc-500">{logs.length}</span>
+              </div>
+              <div className="grid gap-3">
+                {(logs.length ? logs.slice(0, 3) : [
+                  {
+                    id: "empty",
+                    title: "No action yet",
+                    basis: "ボタンを押すとここに操作ログが追加されます。",
+                  },
+                ]).map((log) => (
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={log.id}>
+                    <p className="text-sm font-medium">{log.title}</p>
+                    <p className="mt-2 text-xs leading-5 text-zinc-500">
+                      {log.basis}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
+          </section>
+        </main>
+      </div>
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-black/80 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 backdrop-blur-2xl lg:hidden">
+        <div className="mx-auto grid max-w-xl grid-cols-5 gap-2">
+          {quickActions.map(([label, view]) => (
+            <button
+              className={`min-h-14 rounded-2xl border border-white/10 px-1 text-[11px] transition ${
+                activeView === view
+                  ? "bg-white text-black"
+                  : "bg-white/[0.06] text-zinc-300"
+              }`}
+              key={view}
+              onClick={() => navigate(view)}
+              type="button"
+            >
+              {label}
+            </button>
+          ))}
         </div>
-      ) : null}
+      </nav>
     </div>
   );
 }
