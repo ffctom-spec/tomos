@@ -52,73 +52,142 @@ function BroadcastIntelligenceCard({
   onToggle: () => void;
 }) {
   return (
-    <GlassCard>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-            AI Publisher Intelligence
+    <GlassCard className="p-0">
+      <div className="border-b border-white/10 p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
+              01 / AI Publisher Intelligence
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+              {idea.title}
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-500">
+              {idea.suggestedBrand} / AIが、今出すべきテーマと次の打ち手を整理します。
+            </p>
+          </div>
+          <div className="min-w-24 text-right">
+            <p className="text-4xl font-semibold">{idea.confidenceScore}</p>
+            <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+              AI Estimate
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-px bg-white/10 lg:grid-cols-[1.1fr_0.9fr]">
+        <section className="bg-[#070707] p-5 sm:p-6">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
+            A. WHY NOW
           </p>
-          <h2 className="mt-2 text-2xl font-semibold leading-tight">{idea.title}</h2>
-          <p className="mt-2 text-sm text-zinc-500">{idea.suggestedBrand}</p>
+          <ul className="mt-4 grid gap-3 text-sm leading-6 text-zinc-300">
+            {idea.whyNow.slice(0, 3).map((reason) => (
+              <li className="border-l border-white/20 pl-3" key={reason}>
+                {reason}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-4 text-xs text-zinc-600">Mock / AI推定</p>
+        </section>
+
+        <section className="bg-[#070707] p-5 sm:p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
+                B. MARKET SIGNAL
+              </p>
+              <div className="mt-4">
+                <MiniList items={idea.hotWords.slice(0, 5)} />
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-4xl font-semibold">{idea.expectedImpact.sns}</p>
+              <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+                Opportunity
+              </p>
+            </div>
+          </div>
+          <div className="mt-5">
+            <MiniList items={idea.trendSources.slice(0, 4)} />
+          </div>
+        </section>
+      </div>
+
+      <div className="grid gap-px bg-white/10 lg:grid-cols-[1fr_1fr]">
+        <section className="bg-[#050505] p-5 sm:p-6">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
+            C. CREATIVE DIRECTION
+          </p>
+          <p className="mt-4 whitespace-pre-line text-lg leading-8 text-zinc-100">
+            {idea.suggestedLead}
+          </p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+              <p className="text-xs text-zinc-500">切り口</p>
+              <p className="mt-2 text-sm leading-6 text-zinc-300">{idea.aiInsight}</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+              <p className="text-xs text-zinc-500">保存されやすい理由</p>
+              <p className="mt-2 text-sm leading-6 text-zinc-300">
+                {idea.whySelected[0]}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-[#050505] p-5 sm:p-6">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
+            D. SIMILAR WINNING CONTENT
+          </p>
+          <div className="mt-4 grid gap-3">
+            {idea.similarWinningContent.slice(0, 3).map((content) => (
+              <div
+                className="rounded-xl border border-white/10 bg-black/40 p-4"
+                key={`${content.channel}-${content.title}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-sm font-semibold">{content.title}</h3>
+                  <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-zinc-400">
+                    {content.channel}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-zinc-500">
+                  伸びた理由: {content.reason}
+                </p>
+                <p className="mt-2 text-xs text-zinc-400">{content.estimatedSignal}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <div className="border-t border-white/10 p-5 sm:p-6">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
+            E. NEXT ACTION
+          </p>
+          <button
+            className="text-xs text-zinc-500 transition hover:text-zinc-200"
+            onClick={onToggle}
+            type="button"
+          >
+            {expanded ? "Close detail" : "More intelligence"}
+          </button>
         </div>
-        <div className="text-right">
-          <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black">
-            {idea.confidenceScore}%
-          </span>
-          <p className="mt-2 text-[11px] text-zinc-500">Confidence</p>
+        <div className="grid gap-2 sm:grid-cols-4">
+          <PillButton onClick={() => onSelect(idea)}>Review</PillButton>
+          <PillButton tone="light" onClick={() => onApprove(idea.id)}>
+            Approve
+          </PillButton>
+          <PillButton>Rewrite</PillButton>
+          <PillButton>Create Content</PillButton>
         </div>
-      </div>
-
-      <div className="mt-5 rounded-2xl border border-white/10 bg-black/35 p-4">
-        <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-          なぜ今？
-        </p>
-        <ul className="mt-3 grid gap-2 text-sm leading-6 text-zinc-300">
-          {idea.whyNow.slice(0, 4).map((reason) => (
-            <li key={reason}>・{reason}</li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-        <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-          Suggested Lead
-        </p>
-        <p className="mt-3 whitespace-pre-line text-sm leading-7 text-zinc-200">
-          {idea.suggestedLead}
-        </p>
-      </div>
-
-      <div className="mt-4 grid gap-2 sm:grid-cols-4">
-        <PillButton onClick={onToggle}>{expanded ? "閉じる" : "詳細を展開"}</PillButton>
-        <PillButton onClick={() => onSelect(idea)}>Review</PillButton>
-        <PillButton tone="light" onClick={() => onApprove(idea.id)}>
-          Approve
-        </PillButton>
-        <PillButton>Create Content</PillButton>
       </div>
 
       {expanded ? (
-        <div className="mt-5 grid gap-4">
-          <div className="grid gap-4 xl:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                Hot Word
-              </p>
-              <div className="mt-3">
-                <MiniList items={idea.hotWords} />
-              </div>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                AI Insight
-              </p>
-              <p className="mt-3 text-sm leading-7 text-zinc-300">{idea.aiInsight}</p>
-            </div>
-          </div>
-
-          <div className="grid gap-4 xl:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+        <div className="border-t border-white/10 p-5 sm:p-6">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border border-white/10 bg-black/35 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
                 Suggested Structure
               </p>
@@ -126,47 +195,17 @@ function BroadcastIntelligenceCard({
                 <MiniList items={idea.suggestedStructure} />
               </div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+            <div className="rounded-xl border border-white/10 bg-black/35 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                Trend Sources
+                Why Selected
               </p>
-              <div className="mt-3">
-                <MiniList items={idea.trendSources} />
-              </div>
+              <ul className="mt-3 grid gap-2 text-sm leading-6 text-zinc-300">
+                {idea.whySelected.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
             </div>
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-              Why Selected
-            </p>
-            <ul className="mt-3 grid gap-2 text-sm leading-6 text-zinc-300 md:grid-cols-3">
-              {idea.whySelected.map((reason) => (
-                <li key={reason}>・{reason}</li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-              Similar Winning Content
-            </p>
-            <div className="mt-3 grid gap-3 md:grid-cols-3">
-              {idea.similarWinningContent.map((content) => (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={`${content.channel}-${content.title}`}>
-                  <p className="text-xs text-zinc-500">{content.channel}</p>
-                  <h3 className="mt-2 text-sm font-semibold">{content.title}</h3>
-                  <p className="mt-2 text-xs leading-5 text-zinc-500">
-                    参考理由: {content.reason}
-                  </p>
-                  <p className="mt-2 text-xs text-zinc-400">{content.estimatedSignal}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid gap-4 xl:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+            <div className="rounded-xl border border-white/10 bg-black/35 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
                 Content Opportunities
               </p>
@@ -174,7 +213,7 @@ function BroadcastIntelligenceCard({
                 <MiniList items={idea.contentOpportunities} />
               </div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+            <div className="rounded-xl border border-white/10 bg-black/35 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
                 Product Opportunity
               </p>
@@ -183,21 +222,8 @@ function BroadcastIntelligenceCard({
               </div>
             </div>
           </div>
-
-          <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-              Expected Impact
-            </p>
-            <div className="mt-3">
-              <ImpactGrid idea={idea} />
-            </div>
-          </div>
-
-          <div className="grid gap-2 sm:grid-cols-4">
-            <PillButton onClick={() => onSelect(idea)}>Review</PillButton>
-            <PillButton tone="light" onClick={() => onApprove(idea.id)}>Approve</PillButton>
-            <PillButton>Rewrite</PillButton>
-            <PillButton>Create Content</PillButton>
+          <div className="mt-4">
+            <ImpactGrid idea={idea} />
           </div>
         </div>
       ) : null}

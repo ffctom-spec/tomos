@@ -14,13 +14,13 @@ export function ViewFrame({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-[2rem] border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-black/40 backdrop-blur-2xl sm:p-7">
-      <div className="mb-6 flex items-start justify-between gap-4">
+    <section className="rounded-[1.25rem] border border-white/[0.12] bg-[#050505]/85 p-5 shadow-2xl shadow-black/40 backdrop-blur-2xl sm:p-8">
+      <div className="mb-7 flex items-start justify-between gap-4 border-b border-white/10 pb-7">
         <div>
           <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
             {eyebrow}
           </p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-5xl">
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight text-white sm:text-6xl">
             {title}
           </h1>
           {detail ? (
@@ -31,7 +31,7 @@ export function ViewFrame({
         </div>
         {onBack ? (
           <button
-            className="min-h-11 shrink-0 rounded-full border border-white/10 bg-black/35 px-4 text-sm text-zinc-200 transition hover:bg-white/10"
+            className="min-h-11 shrink-0 rounded-xl border border-white/10 bg-black/60 px-4 text-sm text-zinc-200 transition hover:bg-white/10"
             onClick={onBack}
             type="button"
           >
@@ -59,7 +59,7 @@ export function GlassCard({
 
   return (
     <article
-      className={`rounded-3xl border border-white/10 bg-black/30 p-5 ${interactive} ${className}`}
+      className={`rounded-2xl border border-white/[0.12] bg-[#070707]/75 p-5 shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] ${interactive} ${className}`}
       onClick={onClick}
     >
       {children}
@@ -81,11 +81,11 @@ export function PillButton({
       ? "bg-white text-black hover:bg-zinc-200"
       : tone === "danger"
         ? "border border-red-300/20 bg-red-300/10 text-red-100 hover:bg-red-300/15"
-        : "border border-white/10 text-zinc-200 hover:bg-white/10";
+        : "border border-white/10 bg-black/45 text-zinc-200 hover:bg-white/10";
 
   return (
     <button
-      className={`min-h-11 rounded-full px-4 text-sm transition ${toneClass}`}
+      className={`min-h-11 rounded-xl px-4 text-sm transition ${toneClass}`}
       onClick={onClick}
       type="button"
     >

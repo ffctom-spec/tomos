@@ -522,11 +522,11 @@ export function PortalShell() {
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_-10%,rgba(255,255,255,0.18),transparent_32%),radial-gradient(circle_at_12%_18%,rgba(255,255,255,0.08),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.08),transparent_34%)]" />
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_-10%,rgba(255,255,255,0.11),transparent_34%),linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.018)_1px,transparent_1px)] bg-[length:auto,56px_56px,56px_56px]" />
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-[1500px] flex-col pb-28 md:px-6 lg:flex-row lg:gap-6 lg:pb-8">
         <aside className="hidden w-72 shrink-0 py-6 lg:block">
-          <div className="sticky top-6 rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-2xl">
+          <div className="sticky top-6 rounded-2xl border border-white/[0.12] bg-[#050505]/80 p-5 backdrop-blur-2xl">
             <div className="flex items-center gap-3">
               <div className="grid size-11 place-items-center rounded-2xl bg-white text-base font-semibold text-black">
                 T
@@ -542,7 +542,7 @@ export function PortalShell() {
                   className={`min-h-11 rounded-xl px-4 text-left text-sm transition ${
                     activeView === view
                       ? "bg-white text-black"
-                      : "border border-white/10 bg-black/30 text-zinc-300 hover:bg-white/10"
+                      : "border border-white/10 bg-black/45 text-zinc-300 hover:bg-white/10"
                   }`}
                   key={view}
                   onClick={() => navigate(view)}
