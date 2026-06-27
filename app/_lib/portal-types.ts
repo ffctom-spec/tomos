@@ -144,3 +144,17 @@ export type AutomationRule = {
   target: string;
   status: "Active" | "Draft" | "Paused";
 };
+
+export type AiProvider = "openai" | "gemini";
+
+export type AiConsoleRequest = {
+  provider: AiProvider;
+  prompt: string;
+};
+
+export type AiConsoleResponse = {
+  provider: AiProvider;
+  mode: "live" | "mock";
+  model: string;
+  output: string;
+};

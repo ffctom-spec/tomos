@@ -59,7 +59,9 @@ Response:
 
 - Authentication and user workspace isolation
 - Database for user-owned brands, approvals, content assets, and logs
-- OpenAI / Anthropic APIs for research, review, routing, and generation
+- OpenAI GPT via the `/api/ai` route for research, review, routing, and generation
+- Google Gemini via the `/api/ai` route for alternate AI review and command generation
+- Anthropic API as a later optional provider
 - Google / YouTube APIs for content and performance metrics
 - Meta APIs for Instagram and Threads operations
 - Pinterest API for discovery and performance
@@ -75,6 +77,17 @@ npm run dev
 ```
 
 Open `http://localhost:3000`.
+
+For GPT/Gemini integration, set these variables locally or in Vercel:
+
+```bash
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5.2
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.5-flash
+```
+
+When keys are missing, `/api/ai` returns mock responses so the iPhone-ready MVP still works and Vercel rendering does not fail.
 
 Run checks:
 

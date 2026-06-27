@@ -19,6 +19,8 @@ import {
 } from "@/app/_lib/portal-data";
 import type {
   ActivityTimelineItem,
+  AiConsoleResponse,
+  AiProvider,
   ApprovalItem,
   ApprovalStatus,
   BroadcastIdea,
@@ -90,6 +92,12 @@ export function PortalShell() {
   const [timeline, setTimeline] =
     useState<ActivityTimelineItem[]>(activityTimeline);
   const [logs, setLogs] = useState<DecisionLog[]>(decisionLogs);
+  const [aiProvider, setAiProvider] = useState<AiProvider>("openai");
+  const [aiPrompt, setAiPrompt] = useState(
+    "今日のExecutive Approvalから、最優先で承認すべきBroadcast Missionを1つ選んでください。",
+  );
+  const [aiResponse, setAiResponse] = useState<AiConsoleResponse | null>(null);
+  const [aiStatus, setAiStatus] = useState<"idle" | "loading" | "error">("idle");
 
   const counts = useMemo(
     () => ({
@@ -170,6 +178,42 @@ export function PortalShell() {
       },
       ...items,
     ]);
+  }
+
+  async function submitAiConsole() {
+    setAiStatus("loading");
+    setAiResponse(null);
+
+    try {
+      const response = await fetch("/api/ai", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          provider: aiProvider,
+          prompt: aiPrompt,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("AI Console request failed");
+      }
+
+      const data = (await response.json()) as AiConsoleResponse;
+      setAiResponse(data);
+      setAiStatus("idle");
+      setTimeline((items) =>
+        addOperationLog(
+          items,
+          `${data.provider === "openai" ? "GPT" : "Gemini"}連携テスト`,
+          `${data.model} / ${data.mode} modeでTOMOS指令を処理。`,
+          "Mobile AI Console",
+        ),
+      );
+    } catch {
+      setAiStatus("error");
+    }
   }
 
   return (
@@ -260,6 +304,88 @@ export function PortalShell() {
               Demo Mode: API連携前のMVPです。操作状態はブラウザ内でのみ反映されます。
             </div>
           </header>
+
+          <section className="py-6">
+            <div className="rounded-lg border border-white/10 bg-white/[0.05] p-5 shadow-2xl shadow-black/30">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                    iPhone 16 Pro Ready / GPT + Gemini
+                  </p>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white">
+                    Mobile AI Console
+                  </h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+                    iPhoneからTOMOSへ指示し、GPTまたはGeminiでExecutive Brief、Broadcast Mission、
+                    Approval判断のたたき台を生成します。APIキー未設定時はmockで安全に動作します。
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 rounded-full border border-white/10 bg-black/40 p-1">
+                  {[
+                    ["openai", "GPT"],
+                    ["gemini", "Gemini"],
+                  ].map(([provider, label]) => (
+                    <button
+                      className={`min-h-10 rounded-full px-5 text-sm transition ${
+                        aiProvider === provider
+                          ? "bg-white text-black"
+                          : "text-zinc-400 hover:bg-white/[0.06] hover:text-white"
+                      }`}
+                      key={provider}
+                      onClick={() => setAiProvider(provider as AiProvider)}
+                      type="button"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_320px]">
+                <textarea
+                  className="min-h-32 w-full resize-none rounded-lg border border-white/10 bg-black/40 p-4 text-base leading-7 text-white outline-none transition placeholder:text-zinc-600 focus:border-white/30"
+                  onChange={(event) => setAiPrompt(event.target.value)}
+                  value={aiPrompt}
+                />
+                <div className="flex flex-col gap-3">
+                  <button
+                    className="min-h-12 rounded-full bg-white px-5 text-sm font-medium text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+                    disabled={aiStatus === "loading"}
+                    onClick={submitAiConsole}
+                    type="button"
+                  >
+                    {aiStatus === "loading" ? "AIに接続中" : "TOMOSへ送信"}
+                  </button>
+                  <div className="rounded-lg border border-white/10 bg-black/30 p-4 text-xs leading-5 text-zinc-500">
+                    ProductionではOPENAI_API_KEYまたはGEMINI_API_KEYをVercel環境変数に設定します。
+                    現在はキー未設定でも画面が破綻しないAPI-ready MVPです。
+                  </div>
+                </div>
+              </div>
+              {aiStatus === "error" ? (
+                <div className="mt-4 rounded-lg border border-red-300/20 bg-red-300/10 p-4 text-sm text-red-100">
+                  AI Consoleの呼び出しに失敗しました。APIキー、モデル名、Vercel環境変数を確認してください。
+                </div>
+              ) : null}
+              {aiResponse ? (
+                <div className="mt-4 rounded-lg border border-white/10 bg-black/40 p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black">
+                      {aiResponse.provider === "openai" ? "GPT" : "Gemini"}
+                    </span>
+                    <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-400">
+                      {aiResponse.mode}
+                    </span>
+                    <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-400">
+                      {aiResponse.model}
+                    </span>
+                  </div>
+                  <p className="mt-4 whitespace-pre-line text-sm leading-7 text-zinc-300">
+                    {aiResponse.output}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          </section>
 
           <section className="grid gap-4 py-6 md:grid-cols-3 2xl:grid-cols-6">
             {[
