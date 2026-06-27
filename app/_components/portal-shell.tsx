@@ -16,14 +16,16 @@ const accentClasses: Record<ToolCard["accent"], string> = {
 function BrandMark() {
   return (
     <div className="flex items-center gap-3">
-      <div className="grid size-10 place-items-center rounded-lg border border-white/10 bg-white text-sm font-semibold text-black shadow-[0_0_30px_rgba(255,255,255,0.12)]">
-        PB
+      <div className="grid size-11 place-items-center rounded-xl border border-white/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(214,214,214,0.82))] text-base font-semibold text-black shadow-[0_0_32px_rgba(255,255,255,0.16)]">
+        T
       </div>
       <div>
-        <p className="text-sm font-semibold tracking-[0.24em] text-white">
-          PLAN B
+        <p className="text-sm font-semibold tracking-[0.3em] text-white">
+          TOMOS
         </p>
-        <p className="text-xs text-zinc-500">AI command portal</p>
+        <p className="text-xs tracking-[0.18em] text-zinc-500">
+          AI Operating System
+        </p>
       </div>
     </div>
   );
@@ -57,15 +59,15 @@ function Sidebar() {
         </nav>
       </div>
 
-      <div className="mt-6 rounded-lg border border-white/10 bg-white/[0.04] p-4">
-        <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+      <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.04] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-zinc-500">
           Workspace
         </p>
-        <p className="mt-3 text-sm font-medium text-white">Personal Lab</p>
+        <p className="mt-3 text-sm font-medium text-white">TOMOS Workspace</p>
         <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/10">
           <div className="h-full w-2/3 rounded-full bg-white" />
         </div>
-        <p className="mt-3 text-xs text-zinc-500">67% monthly capacity</p>
+        <p className="mt-3 text-xs text-zinc-500">今月の稼働率 67%</p>
       </div>
     </aside>
   );
@@ -116,17 +118,17 @@ export function PortalShell() {
         <main className="flex-1 px-5 py-6 sm:px-8 lg:px-10 lg:py-8">
           <header className="flex flex-col gap-4 border-b border-white/10 pb-6 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm text-zinc-500">Today / AI Portal</p>
+              <p className="text-sm text-zinc-500">今日 / AI Operating System</p>
               <h1 className="mt-2 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                Build the next move.
+                Welcome back, Tom.
               </h1>
             </div>
             <div className="flex items-center gap-3">
               <button className="min-h-11 rounded-full border border-white/10 px-4 text-sm text-zinc-300 transition hover:bg-white/[0.06]">
-                Import
+                取り込み
               </button>
               <button className="min-h-11 rounded-full bg-white px-5 text-sm font-medium text-black transition hover:bg-zinc-200">
-                New agent
+                新規エージェント
               </button>
             </div>
           </header>
@@ -151,9 +153,9 @@ export function PortalShell() {
           <section className="grid gap-6 xl:grid-cols-[1fr_360px]">
             <div>
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Featured agents</h2>
+                <h2 className="text-lg font-semibold">注目のエージェント</h2>
                 <a className="text-sm text-zinc-500 hover:text-white" href="#">
-                  View all
+                  すべて見る
                 </a>
               </div>
               <div className="grid gap-4 md:grid-cols-3">
@@ -165,7 +167,7 @@ export function PortalShell() {
 
             <aside className="p-0">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Live workflows</h2>
+                <h2 className="text-lg font-semibold">進行中のワークフロー</h2>
                 <span className="rounded-full bg-emerald-300/10 px-3 py-1 text-xs text-emerald-200">
                   Online
                 </span>
@@ -197,7 +199,7 @@ export function PortalShell() {
 
               <div className="mt-5 rounded-lg border border-white/10 bg-white text-black">
                 <div className="border-b border-black/10 px-4 py-3">
-                  <p className="text-sm font-semibold">Quick prompt</p>
+                  <p className="text-sm font-semibold">クイックプロンプト</p>
                 </div>
                 <p className="px-4 py-4 text-sm leading-6 text-zinc-700">
                   新しい事業アイデアを、調査・仮説・実行タスクに分解して。

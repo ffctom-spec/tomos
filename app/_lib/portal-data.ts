@@ -37,7 +37,7 @@ export const toolCards: ToolCard[] = [
   },
   {
     title: "Strategy Writer",
-    description: "企画書、仕様書、提案文をPLAN Bの文脈に合わせて生成。",
+    description: "企画書、仕様書、提案文をTOMOSの文脈に合わせて生成。",
     tag: "Writing",
     metric: "4 drafts",
     accent: "violet",

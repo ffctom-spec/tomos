@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PLAN B | AI Portal",
-  description: "A minimal AI command portal for agents, prompts, and workflows.",
+  title: "TOMOS | AI Operating System",
+  description: "A premium AI operating system for agents, prompts, and workflows.",
 };
 
 export default function RootLayout({
