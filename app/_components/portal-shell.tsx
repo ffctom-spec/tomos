@@ -193,6 +193,27 @@ export function PortalShell() {
     }
   }
 
+  function createFromBroadcast(idea: BroadcastIdea) {
+    const approval: ApprovalItem = {
+      id: `broadcast-${idea.id}`,
+      type: "Broadcast Mission",
+      title: idea.title,
+      brand: idea.suggestedBrand,
+      reason: idea.aiInsight,
+      status: "Approved",
+    };
+
+    setSelectedBroadcast(idea);
+    setSelectedApproval(approval);
+    logAction(
+      "Broadcast Missionから投稿作成を開始",
+      `${idea.suggestedBrand} / ${idea.title} をContent Creation Flowへ送信。`,
+      "Broadcast Center",
+    );
+    setPreviousView(activeView);
+    setActiveView("content-creation");
+  }
+
   function addBroadcastOpportunity(title: string) {
     const idea: BroadcastIdea = {
       id: `similar-${title}-${Date.now()}`,
@@ -430,6 +451,7 @@ export function PortalShell() {
           <BroadcastCenterView
             ideas={broadcastIdeas}
             onBack={goBack}
+            onCreateContent={createFromBroadcast}
             onSelect={selectBroadcast}
             onApprove={approveBroadcast}
           />
@@ -439,6 +461,7 @@ export function PortalShell() {
           <BroadcastDetailView
             idea={selectedBroadcast}
             onBack={goBack}
+            onCreateContent={createFromBroadcast}
             onApprove={approveBroadcast}
           />
         ) : null;
@@ -522,26 +545,28 @@ export function PortalShell() {
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_-10%,rgba(255,255,255,0.11),transparent_34%),linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.018)_1px,transparent_1px)] bg-[length:auto,56px_56px,56px_56px]" />
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_-14%,rgba(255,255,255,0.10),transparent_30%),linear-gradient(rgba(255,255,255,0.022)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.016)_1px,transparent_1px),repeating-linear-gradient(110deg,rgba(255,255,255,0.015)_0_1px,transparent_1px_8px)] bg-[length:auto,64px_64px,64px_64px,180px_180px]" />
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-[1500px] flex-col pb-28 md:px-6 lg:flex-row lg:gap-6 lg:pb-8">
         <aside className="hidden w-72 shrink-0 py-6 lg:block">
-          <div className="sticky top-6 rounded-2xl border border-white/[0.12] bg-[#050505]/80 p-5 backdrop-blur-2xl">
+          <div className="sticky top-6 border border-white/[0.14] bg-[#030303]/90 p-5 backdrop-blur-2xl">
             <div className="flex items-center gap-3">
-              <div className="grid size-11 place-items-center rounded-2xl bg-white text-base font-semibold text-black">
+              <div className="grid size-11 place-items-center border border-white bg-white text-base font-semibold text-black">
                 T
               </div>
               <div>
                 <p className="text-sm font-semibold tracking-[0.3em]">TOMOS</p>
-                <p className="text-xs text-zinc-500">Beta 0.2 / UX Hierarchy</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                  Beta 0.2 / Intelligence Deck
+                </p>
               </div>
             </div>
             <nav className="mt-8 grid gap-2">
               {portalNavigationItems.map(({ label, view }) => (
                 <button
-                  className={`min-h-11 rounded-xl px-4 text-left text-sm transition ${
+                  className={`min-h-11 border px-4 text-left text-sm transition ${
                     activeView === view
-                      ? "bg-white text-black"
+                      ? "border-white bg-white text-black"
                       : "border border-white/10 bg-black/45 text-zinc-300 hover:bg-white/10"
                   }`}
                   key={view}
@@ -599,7 +624,7 @@ export function PortalShell() {
                     basis: "ボタンを押すとここに操作ログが追加されます。",
                   },
                 ]).map((log) => (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={log.id}>
+                  <div className="border border-white/10 bg-white/[0.04] p-4" key={log.id}>
                     <p className="text-sm font-medium">{log.title}</p>
                     <p className="mt-2 text-xs leading-5 text-zinc-500">
                       {log.basis}
@@ -616,7 +641,7 @@ export function PortalShell() {
         <div className="mx-auto grid max-w-xl grid-cols-5 gap-2">
           {portalQuickActions.map(({ label, view }) => (
             <button
-              className={`min-h-14 rounded-2xl border border-white/10 px-1 text-[11px] transition ${
+              className={`min-h-14 border border-white/10 px-1 text-[11px] transition ${
                 activeView === view
                   ? "bg-white text-black"
                   : "bg-white/[0.06] text-zinc-300"

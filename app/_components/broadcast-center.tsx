@@ -14,9 +14,9 @@ function ImpactGrid({ idea }: { idea: BroadcastIdea }) {
         ["保存率", idea.expectedImpact.saves],
         ["商品導線", idea.expectedImpact.productPath],
       ].map(([label, value]) => (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3" key={label}>
-          <p className="text-xs text-zinc-500">{label}</p>
-          <p className="mt-2 text-2xl font-semibold">{value}</p>
+        <div className="border border-white/10 bg-black/35 p-3" key={label}>
+          <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">{label}</p>
+          <p className="mt-2 text-3xl font-semibold text-white">{value}</p>
         </div>
       ))}
     </div>
@@ -28,7 +28,7 @@ function MiniList({ items }: { items: string[] }) {
     <div className="flex flex-wrap gap-2">
       {items.map((item) => (
         <span
-          className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs text-zinc-400"
+          className="border border-white/10 bg-black/40 px-3 py-1 text-xs text-zinc-400"
           key={item}
         >
           {item}
@@ -42,12 +42,14 @@ function BroadcastIntelligenceCard({
   idea,
   expanded,
   onApprove,
+  onCreateContent,
   onSelect,
   onToggle,
 }: {
   idea: BroadcastIdea;
   expanded: boolean;
   onApprove: (id: string) => void;
+  onCreateContent: (idea: BroadcastIdea) => void;
   onSelect: (idea: BroadcastIdea) => void;
   onToggle: () => void;
 }) {
@@ -59,7 +61,7 @@ function BroadcastIntelligenceCard({
             <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
               01 / AI Publisher Intelligence
             </p>
-            <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+            <h2 className="mt-3 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
               {idea.title}
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-500">
@@ -67,7 +69,7 @@ function BroadcastIntelligenceCard({
             </p>
           </div>
           <div className="min-w-24 text-right">
-            <p className="text-4xl font-semibold">{idea.confidenceScore}</p>
+            <p className="text-5xl font-semibold">{idea.confidenceScore}</p>
             <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-zinc-500">
               AI Estimate
             </p>
@@ -78,7 +80,7 @@ function BroadcastIntelligenceCard({
       <div className="grid gap-px bg-white/10 lg:grid-cols-[1.1fr_0.9fr]">
         <section className="bg-[#070707] p-5 sm:p-6">
           <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
-            A. WHY NOW
+            01 / WHY NOW
           </p>
           <ul className="mt-4 grid gap-3 text-sm leading-6 text-zinc-300">
             {idea.whyNow.slice(0, 3).map((reason) => (
@@ -87,14 +89,16 @@ function BroadcastIntelligenceCard({
               </li>
             ))}
           </ul>
-          <p className="mt-4 text-xs text-zinc-600">Mock / AI推定</p>
+          <p className="mt-4 text-[11px] uppercase tracking-[0.18em] text-zinc-600">
+            Mock / AI Estimate
+          </p>
         </section>
 
         <section className="bg-[#070707] p-5 sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
-                B. MARKET SIGNAL
+                02 / MARKET SIGNAL
               </p>
               <div className="mt-4">
                 <MiniList items={idea.hotWords.slice(0, 5)} />
@@ -116,17 +120,17 @@ function BroadcastIntelligenceCard({
       <div className="grid gap-px bg-white/10 lg:grid-cols-[1fr_1fr]">
         <section className="bg-[#050505] p-5 sm:p-6">
           <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
-            C. CREATIVE DIRECTION
+            03 / CREATIVE DIRECTION
           </p>
           <p className="mt-4 whitespace-pre-line text-lg leading-8 text-zinc-100">
             {idea.suggestedLead}
           </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+            <div className="border border-white/10 bg-black/40 p-4">
               <p className="text-xs text-zinc-500">切り口</p>
               <p className="mt-2 text-sm leading-6 text-zinc-300">{idea.aiInsight}</p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+            <div className="border border-white/10 bg-black/40 p-4">
               <p className="text-xs text-zinc-500">保存されやすい理由</p>
               <p className="mt-2 text-sm leading-6 text-zinc-300">
                 {idea.whySelected[0]}
@@ -137,17 +141,17 @@ function BroadcastIntelligenceCard({
 
         <section className="bg-[#050505] p-5 sm:p-6">
           <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
-            D. SIMILAR WINNING CONTENT
+            04 / SIMILAR WINNING CONTENT
           </p>
           <div className="mt-4 grid gap-3">
             {idea.similarWinningContent.slice(0, 3).map((content) => (
               <div
-                className="rounded-xl border border-white/10 bg-black/40 p-4"
+                className="border border-white/10 bg-black/40 p-4"
                 key={`${content.channel}-${content.title}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="text-sm font-semibold">{content.title}</h3>
-                  <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-zinc-400">
+                  <span className="border border-white/10 px-3 py-1 text-[11px] text-zinc-400">
                     {content.channel}
                   </span>
                 </div>
@@ -164,7 +168,7 @@ function BroadcastIntelligenceCard({
       <div className="border-t border-white/10 p-5 sm:p-6">
         <div className="mb-4 flex items-center justify-between gap-3">
           <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
-            E. NEXT ACTION
+            05 / NEXT ACTION
           </p>
           <button
             className="text-xs text-zinc-500 transition hover:text-zinc-200"
@@ -180,14 +184,16 @@ function BroadcastIntelligenceCard({
             Approve
           </PillButton>
           <PillButton>Rewrite</PillButton>
-          <PillButton>Create Content</PillButton>
+          <PillButton tone="light" onClick={() => onCreateContent(idea)}>
+            Create Content
+          </PillButton>
         </div>
       </div>
 
       {expanded ? (
         <div className="border-t border-white/10 p-5 sm:p-6">
           <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-xl border border-white/10 bg-black/35 p-4">
+            <div className="border border-white/10 bg-black/35 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
                 Suggested Structure
               </p>
@@ -195,7 +201,7 @@ function BroadcastIntelligenceCard({
                 <MiniList items={idea.suggestedStructure} />
               </div>
             </div>
-            <div className="rounded-xl border border-white/10 bg-black/35 p-4">
+            <div className="border border-white/10 bg-black/35 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
                 Why Selected
               </p>
@@ -205,7 +211,7 @@ function BroadcastIntelligenceCard({
                 ))}
               </ul>
             </div>
-            <div className="rounded-xl border border-white/10 bg-black/35 p-4">
+            <div className="border border-white/10 bg-black/35 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
                 Content Opportunities
               </p>
@@ -213,7 +219,7 @@ function BroadcastIntelligenceCard({
                 <MiniList items={idea.contentOpportunities} />
               </div>
             </div>
-            <div className="rounded-xl border border-white/10 bg-black/35 p-4">
+            <div className="border border-white/10 bg-black/35 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
                 Product Opportunity
               </p>
@@ -234,11 +240,13 @@ function BroadcastIntelligenceCard({
 export function BroadcastCenterView({
   ideas,
   onBack,
+  onCreateContent,
   onSelect,
   onApprove,
 }: {
   ideas: BroadcastIdea[];
   onBack: () => void;
+  onCreateContent: (idea: BroadcastIdea) => void;
   onSelect: (idea: BroadcastIdea) => void;
   onApprove: (id: string) => void;
 }) {
@@ -246,6 +254,7 @@ export function BroadcastCenterView({
 
   return (
     <ViewFrame
+      eyebrow="01 / AI PUBLISHER INTELLIGENCE"
       title="AI Publisher Intelligence"
       detail="なぜ今このテーマを投稿すべきかをAIが根拠付きで提案します。"
       onBack={onBack}
@@ -257,6 +266,7 @@ export function BroadcastCenterView({
             idea={idea}
             key={idea.id}
             onApprove={onApprove}
+            onCreateContent={onCreateContent}
             onSelect={onSelect}
             onToggle={() => setExpandedId((current) => (current === idea.id ? null : idea.id))}
           />
@@ -269,14 +279,21 @@ export function BroadcastCenterView({
 export function BroadcastDetailView({
   idea,
   onBack,
+  onCreateContent,
   onApprove,
 }: {
   idea: BroadcastIdea;
   onBack: () => void;
+  onCreateContent: (idea: BroadcastIdea) => void;
   onApprove: (id: string) => void;
 }) {
   return (
-    <ViewFrame title="AI Publisher Detail" detail={idea.title} onBack={onBack}>
+    <ViewFrame
+      eyebrow="01 / AI PUBLISHER DETAIL"
+      title="AI Publisher Detail"
+      detail={idea.title}
+      onBack={onBack}
+    >
       <div className="grid gap-4 lg:grid-cols-[1fr_0.78fr]">
         <GlassCard>
           <div className="flex items-start justify-between gap-4">
@@ -299,7 +316,7 @@ export function BroadcastDetailView({
               ["Suggested Lead", idea.suggestedLead],
               ["Why Selected", idea.whySelected.map((item) => `・${item}`).join("\n")],
             ].map(([label, value]) => (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={label}>
+              <div className="border border-white/10 bg-white/[0.04] p-4" key={label}>
                 <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">{label}</p>
                 <p className="mt-3 whitespace-pre-line text-sm leading-7 text-zinc-300">{value}</p>
               </div>
@@ -307,13 +324,13 @@ export function BroadcastDetailView({
           </div>
 
           <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+            <div className="border border-white/10 bg-black/30 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Hot Word</p>
               <div className="mt-3">
                 <MiniList items={idea.hotWords} />
               </div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+            <div className="border border-white/10 bg-black/30 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Suggested Structure</p>
               <div className="mt-3">
                 <MiniList items={idea.suggestedStructure} />
@@ -338,7 +355,7 @@ export function BroadcastDetailView({
             </p>
             <div className="mt-3 grid gap-3">
               {idea.similarWinningContent.map((content) => (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={`${content.channel}-${content.title}`}>
+                <div className="border border-white/10 bg-white/[0.04] p-4" key={`${content.channel}-${content.title}`}>
                   <p className="text-xs text-zinc-500">{content.channel}</p>
                   <p className="mt-2 text-sm font-semibold">{content.title}</p>
                   <p className="mt-2 text-xs leading-5 text-zinc-500">
@@ -358,7 +375,9 @@ export function BroadcastDetailView({
               <PillButton onClick={() => onBack()}>Review</PillButton>
               <PillButton tone="light" onClick={() => onApprove(idea.id)}>Approve</PillButton>
               <PillButton>Rewrite</PillButton>
-              <PillButton>Create Content</PillButton>
+              <PillButton tone="light" onClick={() => onCreateContent(idea)}>
+                Create Content
+              </PillButton>
             </div>
           </GlassCard>
         </div>
