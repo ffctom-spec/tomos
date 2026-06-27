@@ -136,6 +136,7 @@ export function ContentCreationFlow({
   const [selectedTitle, setSelectedTitle] = useState("");
   const [selectedFirstCopy, setSelectedFirstCopy] = useState("");
   const [editableBody, setEditableBody] = useState("");
+  const [selectedHashtags, setSelectedHashtags] = useState<string[]>([]);
   const [saved, setSaved] = useState(false);
   const [uploadedAsset, setUploadedAsset] = useState<UploadedAsset | null>(null);
   const [addedSeriesTitle, setAddedSeriesTitle] = useState("");
@@ -231,6 +232,7 @@ export function ContentCreationFlow({
       setSelectedTitle(result.finalPost.title);
       setSelectedFirstCopy(result.concept.firstSlideCopy);
       setEditableBody(result.finalPost.body);
+      setSelectedHashtags(result.finalPost.hashtags);
       setStep(6);
       onCreativeBriefGenerated?.();
       onPostSimulationGenerated?.();
@@ -285,6 +287,14 @@ export function ContentCreationFlow({
     setSelectedFirstCopy(creativeBrief.concept.firstSlideCopy);
     setEditableBody(
       `${nextLead}\n\n${creativeBrief.finalPost.body}\n\n別案ポイント: ${structure}として、1枚目で結論をより短く見せる構成です。`,
+    );
+  }
+
+  function toggleHashtag(tag: string) {
+    setSelectedHashtags((current) =>
+      current.includes(tag)
+        ? current.filter((item) => item !== tag)
+        : [...current, tag],
     );
   }
 
@@ -449,18 +459,22 @@ export function ContentCreationFlow({
             brief={creativeBrief}
             channel={channel}
             editableBody={editableBody}
+            audience={audience}
             uploadedAsset={uploadedAsset}
             instagramConnected={instagramConnected}
             isGenerating={isGenerating}
+            objective={objective}
             postType={postType}
             saved={saved}
             selectedFirstCopy={selectedFirstCopy}
+            selectedHashtags={selectedHashtags}
             selectedTitle={selectedTitle}
             seriesOpportunities={getSeriesOpportunities(topic, structure)}
             simulation={simulation}
             baselineReach={baselineReach}
             distributionPlan={distributionPlan}
             structure={structure}
+            tone={tone}
             onAdjust={() => setStep(5)}
             onAddSeries={addSeriesOpportunity}
             onAngleAdopt={adoptCreativeAngle}
@@ -469,6 +483,7 @@ export function ContentCreationFlow({
             onConversationStarterSelect={addConversationStarter}
             onRegenerate={generateLocalVariant}
             onSave={saveDraft}
+            onHashtagToggle={toggleHashtag}
             onTitleSelect={setSelectedTitle}
             addedConversationStarter={addedConversationStarter}
           />
@@ -1021,7 +1036,18 @@ function createMockCreativeBrief({
       lead,
       body,
       cta: "保存して、次に庭や鉢を見るときに見返してください。",
-      hashtags: ["#VERDNA", "#土づくり", "#家庭菜園", "#庭のある暮らし", "#保存版"],
+      hashtags: [
+        "#VERDNA",
+        "#土づくり",
+        "#家庭菜園",
+        "#庭のある暮らし",
+        "#保存版",
+        "#ドライガーデン",
+        "#植物のある暮らし",
+        "#ガーデニング初心者",
+        "#循環する暮らし",
+        "#野菜づくり",
+      ],
       productPath: `${brand}の土・鉢・ガーデングッズの比較導線へ自然につなげる。`,
       aioFaq: [
         "卵殻は土づくりにどう使えますか？",
@@ -1399,6 +1425,7 @@ function PublishReviewCard({
   addedSeriesTitle,
   addedConversationStarter,
   asset,
+  audience,
   baselineReach,
   brief,
   channel,
@@ -1407,19 +1434,23 @@ function PublishReviewCard({
   uploadedAsset,
   instagramConnected,
   isGenerating,
+  objective,
   postType,
   saved,
   selectedFirstCopy,
+  selectedHashtags,
   selectedTitle,
   seriesOpportunities,
   simulation,
   structure,
+  tone,
   onAdjust,
   onAddSeries,
   onAngleAdopt,
   onBaselineReachChange,
   onBodyChange,
   onConversationStarterSelect,
+  onHashtagToggle,
   onRegenerate,
   onSave,
   onTitleSelect,
@@ -1427,6 +1458,7 @@ function PublishReviewCard({
   addedSeriesTitle: string;
   addedConversationStarter: string;
   asset: string;
+  audience: string;
   baselineReach: string;
   brief: CreativeBriefResponse;
   channel: string;
@@ -1435,19 +1467,23 @@ function PublishReviewCard({
   uploadedAsset: UploadedAsset | null;
   instagramConnected: boolean;
   isGenerating: boolean;
+  objective: string;
   postType: string;
   saved: boolean;
   selectedFirstCopy: string;
+  selectedHashtags: string[];
   selectedTitle: string;
   seriesOpportunities: SeriesOpportunity[];
   simulation: PostSimulation;
   structure: string;
+  tone: string;
   onAdjust: () => void;
   onAddSeries: (title: string) => void;
   onAngleAdopt: (angle: CreativeBriefResponse["creativeAngles"][number]) => void;
   onBaselineReachChange: (value: string) => void;
   onBodyChange: (value: string) => void;
   onConversationStarterSelect: (value: string) => void;
+  onHashtagToggle: (value: string) => void;
   onRegenerate: () => void;
   onSave: () => void;
   onTitleSelect: (value: string) => void;
@@ -1455,6 +1491,8 @@ function PublishReviewCard({
   const statusMessage = instagramConnected
     ? "Instagram Draft Ready"
     : "Instagram未接続です。TOMOS内の下書きとして保存しました。";
+  const finalCaption = `${editableBody.trim()}\n\n${selectedHashtags.join(" ")}`.trim();
+  const toneReason = getToneRecommendation(tone, objective);
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
@@ -1474,6 +1512,7 @@ function PublishReviewCard({
           asset={asset}
           brand={brief.finalPost.hashtags[0]?.replace("#", "") ?? "TOMOS"}
           cta={brief.finalPost.cta}
+          hashtagCount={selectedHashtags.length}
           lead={brief.finalPost.lead}
           postType={postType}
           selectedFirstCopy={selectedFirstCopy}
@@ -1608,7 +1647,30 @@ function PublishReviewCard({
         <div className="mt-4 border border-white/10 bg-white/[0.04] p-5">
           <p className="text-xs text-zinc-500">採用タイトル</p>
           <p className="mt-2 text-lg font-semibold text-white">{selectedTitle}</p>
-          <p className="mt-4 text-xs text-zinc-500">リード文候補</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <MetricCard label="ターゲット" value={audience} />
+            <MetricCard label="投稿目的" value={objective} />
+            <MetricCard label="推奨口調" value={tone} />
+          </div>
+          <p className="mt-3 text-xs leading-5 text-zinc-500">
+            AI推奨口調: {toneReason}
+          </p>
+
+          <p className="mt-5 text-xs text-zinc-500">分かりやすいリード文</p>
+          <p className="mt-2 border border-white/10 bg-black/30 p-3 text-sm leading-6 text-zinc-300">
+            {brief.finalPost.lead}
+          </p>
+
+          <p className="mt-5 text-xs text-zinc-500">見出し3つ + 短い補足</p>
+          <div className="mt-2 grid gap-2">
+            {brief.concept.carouselPlan.slice(0, 3).map((heading) => (
+              <p className="border border-white/10 bg-black/30 p-3 text-xs leading-5 text-zinc-400" key={heading}>
+                {heading}
+              </p>
+            ))}
+          </div>
+
+          <p className="mt-5 text-xs text-zinc-500">リード文候補</p>
           <div className="mt-2 grid gap-2">
             {brief.leadOptions.slice(0, 3).map((lead) => (
               <p className="border border-white/10 bg-black/30 p-3 text-xs leading-5 text-zinc-400" key={lead}>
@@ -1616,14 +1678,49 @@ function PublishReviewCard({
               </p>
             ))}
           </div>
-          <p className="mb-3 text-sm text-zinc-400">投稿本文</p>
-          <textarea
-            className="min-h-52 w-full border border-white/10 bg-black/40 p-4 text-sm leading-7 text-zinc-100 outline-none focus:border-white/30"
-            onChange={(event) => onBodyChange(event.target.value)}
-            value={editableBody}
-          />
-          <p className="mt-4 text-sm leading-6 text-zinc-500">
-            {brief.finalPost.hashtags.join(" ")}
+
+          <div className="mt-5">
+            <p className="mb-3 text-sm text-zinc-400">
+              AI推奨ハッシュタグ / 選択中 {selectedHashtags.length}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {brief.finalPost.hashtags.map((tag) => {
+                const active = selectedHashtags.includes(tag);
+
+                return (
+                  <button
+                    className={`min-h-10 border px-3 text-xs transition ${
+                      active
+                        ? "border-white bg-white text-black"
+                        : "border-white/10 bg-black/40 text-zinc-400 hover:bg-white/10"
+                    }`}
+                    key={tag}
+                    onClick={() => onHashtagToggle(tag)}
+                    type="button"
+                  >
+                    {tag}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <details className="mt-5 border border-white/10 bg-black/30 p-4">
+            <summary className="cursor-pointer text-sm text-zinc-300">
+              投稿本文を編集する
+            </summary>
+            <textarea
+              className="mt-4 min-h-52 w-full border border-white/10 bg-black/40 p-4 text-sm leading-7 text-zinc-100 outline-none focus:border-white/30"
+              onChange={(event) => onBodyChange(event.target.value)}
+              value={editableBody}
+            />
+          </details>
+
+          <p className="mt-5 text-xs text-zinc-500">
+            選択中ハッシュタグ反映後の投稿本文
+          </p>
+          <p className="mt-2 whitespace-pre-line border border-white/10 bg-black/30 p-4 text-sm leading-7 text-zinc-300">
+            {finalCaption}
           </p>
           <p className="mt-4 text-sm leading-6 text-zinc-300">
             {brief.finalPost.cta}
@@ -1762,6 +1859,7 @@ function PostPreview({
   asset,
   brand,
   cta,
+  hashtagCount,
   lead,
   postType,
   selectedFirstCopy,
@@ -1771,6 +1869,7 @@ function PostPreview({
   asset: string;
   brand: string;
   cta: string;
+  hashtagCount: number;
   lead: string;
   postType: string;
   selectedFirstCopy: string;
@@ -1828,11 +1927,24 @@ function PostPreview({
         <p className="mt-2 text-base font-semibold text-white">{selectedFirstCopy}</p>
         <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-400">{lead}</p>
         <p className="mt-3 text-xs text-zinc-500">
-          ハッシュタグ 5件 / CTA: {cta}
+          ハッシュタグ {hashtagCount}件 / CTA: {cta}
         </p>
       </div>
     </div>
   );
+}
+
+function getToneRecommendation(tone: string, objective: string) {
+  if (objective.includes("保存")) {
+    return `${tone}を基調に、結論と手順を短く見せると保存されやすいAI Estimateです。`;
+  }
+  if (objective.includes("商品")) {
+    return `${tone}を基調に、売り込みより先に判断基準を示すと商品導線が自然になります。`;
+  }
+  if (objective.includes("認知")) {
+    return `${tone}を基調に、冒頭で一言の発見を置くと初見でも理解されやすくなります。`;
+  }
+  return `${tone}を基調に、読者が次の行動を選びやすい短い言い切りを推奨します。`;
 }
 
 function DistributionDirectorCard({

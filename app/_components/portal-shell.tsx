@@ -179,18 +179,21 @@ export function PortalShell() {
 
   function approveBroadcast(id: string) {
     const target = broadcastIdeas.find((item) => item.id === id);
+    if (!target || target.status === "Approved") return;
+
     setBroadcastIdeas((items) =>
       items.map((item) =>
-        item.id === id ? { ...item, status: "Preparing" } : item,
+        item.id === id ? { ...item, status: "Approved" } : item,
       ),
     );
-    if (target) {
-      logAction(
-        "Broadcast制作承認",
-        `${target.title}を${target.suggestedBrand}向けに制作準備。`,
-        "Broadcast Center",
-      );
-    }
+    setSelectedBroadcast((current) =>
+      current?.id === id ? { ...current, status: "Approved" } : current,
+    );
+    logAction(
+      "Broadcast制作承認",
+      `${target.title}を${target.suggestedBrand}向けにApprovedへ変更。`,
+      "Broadcast Center",
+    );
   }
 
   function createFromBroadcast(idea: BroadcastIdea) {
@@ -199,7 +202,7 @@ export function PortalShell() {
       type: "Broadcast Mission",
       title: idea.title,
       brand: idea.suggestedBrand,
-      reason: idea.aiInsight,
+      reason: `${idea.aiInsight}\n\nSuggested Lead: ${idea.suggestedLead}\n\nRecommended Format: ${idea.suggestedStructure.join(" / ")}`,
       status: "Approved",
     };
 

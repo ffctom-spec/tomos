@@ -15,7 +15,7 @@ export type ApprovalStatus =
   | "On hold"
   | "Rejected";
 
-export type BroadcastStatus = "Ready" | "Preparing";
+export type BroadcastStatus = "Ready" | "Preparing" | "Approved";
 
 export type AiEngine = {
   id: string;

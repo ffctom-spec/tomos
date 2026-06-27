@@ -53,6 +53,10 @@ function BroadcastIntelligenceCard({
   onSelect: (idea: BroadcastIdea) => void;
   onToggle: () => void;
 }) {
+  const [showRewrite, setShowRewrite] = useState(false);
+  const rewriteIdeas = getBroadcastRewriteIdeas(idea);
+  const isApproved = idea.status === "Approved";
+
   return (
     <GlassCard className="p-0">
       <div className="border-b border-white/10 p-5 sm:p-6">
@@ -72,6 +76,9 @@ function BroadcastIntelligenceCard({
             <p className="text-5xl font-semibold">{idea.confidenceScore}</p>
             <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-zinc-500">
               AI Estimate
+            </p>
+            <p className="mt-3 border border-white/10 bg-black/35 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-zinc-400">
+              {isApproved ? "Approved" : idea.status}
             </p>
           </div>
         </div>
@@ -180,15 +187,53 @@ function BroadcastIntelligenceCard({
         </div>
         <div className="grid gap-2 sm:grid-cols-4">
           <PillButton onClick={() => onSelect(idea)}>Review</PillButton>
-          <PillButton tone="light" onClick={() => onApprove(idea.id)}>
-            Approve
+          {isApproved ? (
+            <button
+              className="min-h-12 border border-white/15 bg-black/55 px-4 text-sm text-zinc-500"
+              disabled
+              type="button"
+            >
+              Approved
+            </button>
+          ) : (
+            <PillButton tone="light" onClick={() => onApprove(idea.id)}>
+              Approve
+            </PillButton>
+          )}
+          <PillButton onClick={() => setShowRewrite((current) => !current)}>
+            Rewrite
           </PillButton>
-          <PillButton>Rewrite</PillButton>
           <PillButton tone="light" onClick={() => onCreateContent(idea)}>
             Create Content
           </PillButton>
         </div>
       </div>
+
+      {showRewrite ? (
+        <div className="border-t border-white/10 p-5 sm:p-6">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
+            Rewrite Alternatives / Mock
+          </p>
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            {rewriteIdeas.map((rewrite) => (
+              <div
+                className="border border-white/10 bg-black/35 p-4"
+                key={rewrite.title}
+              >
+                <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
+                  {rewrite.format}
+                </p>
+                <h3 className="mt-3 text-base font-semibold leading-6 text-white">
+                  {rewrite.title}
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-zinc-400">
+                  {rewrite.lead}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {expanded ? (
         <div className="border-t border-white/10 p-5 sm:p-6">
@@ -235,6 +280,26 @@ function BroadcastIntelligenceCard({
       ) : null}
     </GlassCard>
   );
+}
+
+function getBroadcastRewriteIdeas(idea: BroadcastIdea) {
+  return [
+    {
+      title: `${idea.title}を保存版で整理する`,
+      lead: `${idea.suggestedLead.split("\n")[0]} まず保存して見返せる構成にします。`,
+      format: "Carousel",
+    },
+    {
+      title: `${idea.title}で失敗しない3つの視点`,
+      lead: "初心者がつまずきやすいポイントを先に見せ、行動しやすい順番で整理します。",
+      format: "Reel / Short",
+    },
+    {
+      title: `${idea.title}のよくある誤解`,
+      lead: "断定ではなく、条件と注意点を含めて信頼される投稿にします。",
+      format: "FAQ型 Blog",
+    },
+  ];
 }
 
 export function BroadcastCenterView({
@@ -287,6 +352,9 @@ export function BroadcastDetailView({
   onCreateContent: (idea: BroadcastIdea) => void;
   onApprove: (id: string) => void;
 }) {
+  const [showRewrite, setShowRewrite] = useState(false);
+  const isApproved = idea.status === "Approved";
+
   return (
     <ViewFrame
       eyebrow="01 / AI PUBLISHER DETAIL"
@@ -373,13 +441,49 @@ export function BroadcastDetailView({
             </p>
             <div className="mt-4 grid gap-2">
               <PillButton onClick={() => onBack()}>Review</PillButton>
-              <PillButton tone="light" onClick={() => onApprove(idea.id)}>Approve</PillButton>
-              <PillButton>Rewrite</PillButton>
+              {isApproved ? (
+                <button
+                  className="min-h-12 border border-white/15 bg-black/55 px-4 text-sm text-zinc-500"
+                  disabled
+                  type="button"
+                >
+                  Approved
+                </button>
+              ) : (
+                <PillButton tone="light" onClick={() => onApprove(idea.id)}>
+                  Approve
+                </PillButton>
+              )}
+              <PillButton onClick={() => setShowRewrite((current) => !current)}>
+                Rewrite
+              </PillButton>
               <PillButton tone="light" onClick={() => onCreateContent(idea)}>
                 Create Content
               </PillButton>
             </div>
           </GlassCard>
+
+          {showRewrite ? (
+            <GlassCard>
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                Rewrite Alternatives / Mock
+              </p>
+              <div className="mt-3 grid gap-3">
+                {getBroadcastRewriteIdeas(idea).map((rewrite) => (
+                  <div
+                    className="border border-white/10 bg-white/[0.04] p-4"
+                    key={rewrite.title}
+                  >
+                    <p className="text-xs text-zinc-500">{rewrite.format}</p>
+                    <p className="mt-2 text-sm font-semibold">{rewrite.title}</p>
+                    <p className="mt-2 text-xs leading-5 text-zinc-500">
+                      {rewrite.lead}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
+          ) : null}
         </div>
       </div>
     </ViewFrame>
