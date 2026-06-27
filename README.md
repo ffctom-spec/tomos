@@ -20,6 +20,12 @@ Mobile priorities:
 
 Desktop remains an Operating Center, tablet becomes a manager view, and mobile becomes Executive Mode.
 
+Beta 0.2 also adds the integration foundation for OpenAI and Instagram:
+
+- `POST /api/ai/review` reviews content with OpenAI Responses API when `OPENAI_API_KEY` is configured.
+- `GET /api/integrations/instagram` returns Instagram mock analytics today and is structured for Meta Instagram Graph API replacement.
+- Settings / Integrations shows Instagram, OpenAI, YouTube, Google Analytics, Search Console, and commerce connectors.
+
 ## Beta 0.1 API-ready MVP Scope
 
 TOMOS Beta 0.1 is an API-ready MVP. The UI shows the intended production operating screen, information architecture, and AI engine structure, while all data is currently mock data.
@@ -68,7 +74,7 @@ Response:
 {
   "status": "ok",
   "app": "TOMOS",
-  "version": "0.1-beta",
+  "version": "0.2-beta",
   "mode": "api-ready-demo"
 }
 ```
@@ -100,12 +106,23 @@ For GPT/Gemini integration, set these variables locally or in Vercel:
 
 ```bash
 OPENAI_API_KEY=
-OPENAI_MODEL=gpt-5.2
+OPENAI_MODEL=gpt-4.1-mini
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-2.5-flash
 ```
 
 When keys are missing, `/api/ai` returns mock responses so the iPhone-ready MVP still works and Vercel rendering does not fail.
+
+For Instagram integration planning, configure these only in `.env.local` or Vercel Environment Variables:
+
+```bash
+META_APP_ID=
+META_APP_SECRET=
+META_ACCESS_TOKEN=
+INSTAGRAM_BUSINESS_ACCOUNT_ID=
+```
+
+Never commit API keys, access tokens, app secrets, or user SNS tokens. In production, SNS tokens must be encrypted in the database and used only from server-side API routes.
 
 Run checks:
 
@@ -121,7 +138,7 @@ The app is designed for Vercel deployment.
 1. Connect the GitHub repository.
 2. Add production environment variables based on `.env.example`.
 3. Deploy the `main` branch.
-4. Confirm `/api/health` returns `0.1-beta`.
+4. Confirm `/api/health` returns `0.2-beta`.
 
 ## Next Development Steps
 

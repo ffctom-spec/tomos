@@ -32,7 +32,7 @@ Response:
 {
   "provider": "openai",
   "mode": "live",
-  "model": "gpt-5.2",
+  "model": "gpt-4.1-mini",
   "output": "..."
 }
 ```

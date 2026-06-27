@@ -158,3 +158,53 @@ export type AiConsoleResponse = {
   model: string;
   output: string;
 };
+
+export type AiReviewRequest = {
+  content: string;
+  brand: string;
+  channel: string;
+};
+
+export type AiReviewScore = {
+  label: string;
+  score: number;
+  note: string;
+};
+
+export type AiReviewResponse = {
+  mode: "live" | "mock";
+  model: string;
+  summary: string;
+  scores: AiReviewScore[];
+  rewrite: string;
+  nextActions: string[];
+};
+
+export type InstagramTopPost = {
+  id: string;
+  title: string;
+  saves: number;
+  reach: number;
+  engagementRate: string;
+};
+
+export type InstagramAnalytics = {
+  connectionStatus: "connected" | "mock" | "disconnected";
+  account: string;
+  accountRequirement: string;
+  lastSync: string;
+  followers: number;
+  reach: number;
+  impressions: number;
+  saves: number;
+  engagementRate: string;
+  snsHealthScore: number;
+  topPosts: InstagramTopPost[];
+};
+
+export type IntegrationStatus = {
+  id: string;
+  name: string;
+  status: "Connected" | "API-ready" | "Planned";
+  detail: string;
+};

@@ -10,6 +10,8 @@ import type {
   ExecutiveBriefItem,
   KnowledgeVaultItem,
   ProductOpportunity,
+  InstagramAnalytics,
+  IntegrationStatus,
   SnsHealthItem,
   SystemHealthItem,
   UserBrand,
@@ -157,4 +159,31 @@ export const automationRules: AutomationRule[] = [
   { title: "毎日 Content Opportunity 抽出", cadence: "Daily / 07:00", target: "Broadcast Mission候補を生成", status: "Active" },
   { title: "毎週 SNS Health Intelligence", cadence: "Weekly / Monday", target: "保存率、CTR、維持率、反応率を改善案に変換", status: "Draft" },
   { title: "毎週 Commerce Analytics 更新", cadence: "Weekly / Friday", target: "流入、クリック、購入、売上、改善案を更新", status: "Draft" },
+];
+
+export const instagramAnalytics: InstagramAnalytics = {
+  connectionStatus: "mock",
+  account: "@tomos_private_workspace",
+  accountRequirement: "Business / Creator Account required",
+  lastSync: "Mock sync / API-ready",
+  followers: 18420,
+  reach: 42600,
+  impressions: 78100,
+  saves: 1268,
+  engagementRate: "6.8%",
+  snsHealthScore: 82,
+  topPosts: [
+    { id: "ig-01", title: "0円でできる土壌改良", saves: 412, reach: 12400, engagementRate: "8.1%" },
+    { id: "ig-02", title: "ロストラータを太く育てる方法", saves: 336, reach: 9800, engagementRate: "7.4%" },
+    { id: "ig-03", title: "庭で遊ぶ犬たち", saves: 288, reach: 15200, engagementRate: "6.9%" },
+  ],
+};
+
+export const integrationStatuses: IntegrationStatus[] = [
+  { id: "instagram", name: "Instagram", status: "API-ready", detail: "Meta Instagram Graph APIへ置き換え予定" },
+  { id: "openai", name: "OpenAI", status: "API-ready", detail: "Executive Brief / Content Review / AIO提案" },
+  { id: "youtube", name: "YouTube", status: "Planned", detail: "動画CTR、維持率、タイトル改善" },
+  { id: "analytics", name: "Google Analytics", status: "Planned", detail: "流入、CV、コンテンツ別成果" },
+  { id: "search-console", name: "Search Console", status: "Planned", detail: "検索意図、表示回数、AIO候補" },
+  { id: "commerce", name: "Shopify / BASE / Mercari", status: "Planned", detail: "商品クリック、購入、売上連携" },
 ];

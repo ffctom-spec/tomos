@@ -1,22 +1,30 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   activityTimeline,
   aiEngines,
   approvalItems,
   broadcastIdeas,
+  contentReview,
   executiveBrief,
+  integrationStatuses,
   userBrands,
 } from "@/app/_lib/portal-data";
+import {
+  getInstagramAnalytics,
+  reviewContentWithAI,
+} from "@/app/_lib/api-client";
 import type {
   ActivityTimelineItem,
   AiConsoleResponse,
   AiProvider,
+  AiReviewResponse,
   ApprovalItem,
   ApprovalStatus,
   DecisionLog,
   EngineStatus,
+  InstagramAnalytics,
 } from "@/app/_lib/portal-types";
 
 const statusStyles: Record<EngineStatus, string> = {
@@ -133,8 +141,31 @@ export function PortalShell() {
   );
   const [aiResponse, setAiResponse] = useState<AiConsoleResponse | null>(null);
   const [aiStatus, setAiStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [instagram, setInstagram] = useState<InstagramAnalytics | null>(null);
+  const [reviewResult, setReviewResult] = useState<AiReviewResponse | null>(null);
+  const [reviewStatus, setReviewStatus] = useState<"idle" | "loading" | "error">("idle");
   const touchStartX = useRef<number | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    getInstagramAnalytics()
+      .then((data) => {
+        if (mounted) {
+          setInstagram(data);
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setInstagram(null);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const counts = useMemo(
     () => ({
@@ -259,6 +290,31 @@ export function PortalShell() {
       );
     } catch {
       setAiStatus("error");
+    }
+  }
+
+  async function runContentReview() {
+    setReviewStatus("loading");
+    setReviewResult(null);
+
+    try {
+      const result = await reviewContentWithAI({
+        content: contentReview.before,
+        brand: "VERDNA",
+        channel: "Instagram",
+      });
+      setReviewResult(result);
+      setReviewStatus("idle");
+      setTimeline((items) =>
+        addOperationLog(
+          items,
+          "OpenAI Content Review",
+          `${result.model} / ${result.mode} modeでAIO・SEO・SNSレビューを実行。`,
+          "Content Review AI",
+        ),
+      );
+    } catch {
+      setReviewStatus("error");
     }
   }
 
@@ -504,6 +560,169 @@ export function PortalShell() {
                     {item.value}
                   </p>
                   <p className="mt-2 text-xs text-zinc-500">{item.detail}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="mt-7">
+            <SectionTitle title="Settings / Integrations" detail="API-ready foundation" />
+            <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+              <article className="rounded-[2rem] border border-white/10 bg-white/[0.045] p-5 backdrop-blur-xl">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                      Instagram Integration
+                    </p>
+                    <h3 className="mt-2 text-2xl font-semibold">SNS Health Source</h3>
+                    <p className="mt-2 text-sm leading-6 text-zinc-500">
+                      Business / Creator Account required。現在はMock data、
+                      本番ではMeta Instagram Graph APIへ置き換えます。
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black">
+                    {instagram?.connectionStatus ?? "loading"}
+                  </span>
+                </div>
+                <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+                  {[
+                    ["Account", instagram?.account ?? "Loading"],
+                    ["Last sync", instagram?.lastSync ?? "Loading"],
+                    ["Followers", instagram ? instagram.followers.toLocaleString() : "-"],
+                    ["Reach", instagram ? instagram.reach.toLocaleString() : "-"],
+                    ["Impressions", instagram ? instagram.impressions.toLocaleString() : "-"],
+                    ["Saves", instagram ? instagram.saves.toLocaleString() : "-"],
+                    ["Engagement", instagram?.engagementRate ?? "-"],
+                    ["SNS Health", instagram ? String(instagram.snsHealthScore) : "-"],
+                  ].map(([label, value]) => (
+                    <div className="rounded-2xl border border-white/10 bg-black/35 p-4" key={label}>
+                      <p className="text-xs text-zinc-500">{label}</p>
+                      <p className="mt-2 text-sm font-semibold text-white">{value}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-5 grid gap-2">
+                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                    Top posts
+                  </p>
+                  {(instagram?.topPosts ?? []).map((post) => (
+                    <div className="rounded-2xl border border-white/10 bg-black/30 p-4" key={post.id}>
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="font-medium">{post.title}</p>
+                        <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-400">
+                          {post.engagementRate}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs text-zinc-500">
+                        Saves {post.saves} / Reach {post.reach.toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="rounded-[2rem] border border-white/10 bg-white/[0.045] p-5 backdrop-blur-xl">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                      OpenAI Integration
+                    </p>
+                    <h3 className="mt-2 text-2xl font-semibold">GPT Content Review</h3>
+                    <p className="mt-2 text-sm leading-6 text-zinc-500">
+                      OPENAI_API_KEYがあればResponses APIで実行。未設定ならMock結果を返します。
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black">
+                    API-ready
+                  </span>
+                </div>
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  {[
+                    ["Connection Status", "API-ready"],
+                    ["Model", "OPENAI_MODEL"],
+                    ["Last request", reviewResult ? "just now" : "not yet"],
+                    ["Monthly usage", "placeholder"],
+                  ].map(([label, value]) => (
+                    <div className="rounded-2xl border border-white/10 bg-black/35 p-4" key={label}>
+                      <p className="text-xs text-zinc-500">{label}</p>
+                      <p className="mt-2 text-sm font-semibold">{value}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-5">
+                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                    Connected Engines
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {[
+                      "Executive Brief",
+                      "Content Review AI",
+                      "AIO Intelligence",
+                      "Broadcast Center",
+                      "Product Opportunity",
+                    ].map((engine) => (
+                      <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs text-zinc-400" key={engine}>
+                        {engine}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-5 rounded-2xl border border-white/10 bg-black/35 p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                    Content Review AI
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-zinc-300">
+                    {contentReview.before}
+                  </p>
+                  <button
+                    className="mt-4 min-h-11 w-full rounded-full bg-white px-5 text-sm font-medium text-black disabled:bg-zinc-700 disabled:text-zinc-400"
+                    disabled={reviewStatus === "loading"}
+                    onClick={runContentReview}
+                    type="button"
+                  >
+                    {reviewStatus === "loading" ? "AIレビュー中" : "AIレビュー実行"}
+                  </button>
+                  {reviewStatus === "error" ? (
+                    <p className="mt-3 rounded-2xl bg-red-400/10 p-3 text-sm text-red-100">
+                      AIレビューに失敗しました。OPENAI_API_KEYまたはAPI routeを確認してください。
+                    </p>
+                  ) : null}
+                  {reviewResult ? (
+                    <div className="mt-4 rounded-2xl border border-white/10 bg-black/40 p-4">
+                      <p className="text-xs text-zinc-500">
+                        {reviewResult.model} / {reviewResult.mode}
+                      </p>
+                      <p className="mt-3 text-sm leading-6 text-zinc-300">
+                        {reviewResult.summary}
+                      </p>
+                      <div className="mt-4 grid gap-2">
+                        {reviewResult.scores.map((score) => (
+                          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3" key={score.label}>
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-sm font-medium">{score.label}</p>
+                              <span className="text-sm text-zinc-300">{score.score}</span>
+                            </div>
+                            <p className="mt-1 text-xs leading-5 text-zinc-500">{score.note}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </article>
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
+              {integrationStatuses.map((integration) => (
+                <article className="rounded-2xl border border-white/10 bg-white/[0.035] p-4" key={integration.id}>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium">{integration.name}</p>
+                    <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] text-zinc-400">
+                      {integration.status}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-zinc-500">
+                    {integration.detail}
+                  </p>
                 </article>
               ))}
             </div>
