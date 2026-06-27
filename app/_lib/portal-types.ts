@@ -63,6 +63,29 @@ export type BroadcastIdea = {
   productFit: number;
   suggestedBrand: string;
   status: BroadcastStatus;
+  whyNow: string[];
+  hotWords: string[];
+  aiInsight: string;
+  suggestedLead: string;
+  suggestedStructure: string[];
+  whySelected: string[];
+  trendSources: string[];
+  similarWinningContent: Array<{
+    title: string;
+    channel: "YouTube" | "Instagram" | "Blog";
+    reason: string;
+    estimatedSignal: string;
+  }>;
+  contentOpportunities: string[];
+  productOpportunities: string[];
+  confidenceScore: number;
+  expectedImpact: {
+    aio: number;
+    seo: number;
+    sns: number;
+    saves: number;
+    productPath: number;
+  };
 };
 
 export type ContentReviewMetric = {
