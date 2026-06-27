@@ -6,6 +6,7 @@ import { BrandDetailView, BrandPortfolioView } from "@/app/_components/brand-por
 import { BroadcastCenterView, BroadcastDetailView } from "@/app/_components/broadcast-center";
 import { CommerceAnalyticsView } from "@/app/_components/commerce-analytics";
 import { CommandCenter } from "@/app/_components/command-center";
+import { ContentCreationFlow } from "@/app/_components/content-creation-flow";
 import { ContentReviewView } from "@/app/_components/content-review";
 import { ExecutiveBriefView } from "@/app/_components/executive-brief";
 import { IntegrationsPanel } from "@/app/_components/integrations-panel";
@@ -139,6 +140,23 @@ export function PortalShell() {
         `${target.brand} / ${target.title} のステータスを変更。`,
       );
     }
+  }
+
+  function approveAndStartCreation(item: ApprovalItem) {
+    const approvedItem: ApprovalItem = { ...item, status: "Approved" };
+
+    setApprovals((items) =>
+      items.map((approval) =>
+        approval.id === item.id ? approvedItem : approval,
+      ),
+    );
+    setSelectedApproval(approvedItem);
+    logAction(
+      "承認完了・投稿作成を開始",
+      `${item.brand} / ${item.title} をApprovedへ変更し、Content Creation Flowを開始。`,
+    );
+    setPreviousView("approval-detail");
+    setActiveView("content-creation");
   }
 
   function selectApproval(item: ApprovalItem) {
@@ -306,8 +324,13 @@ export function PortalShell() {
           <ApprovalDetailView
             item={selectedApproval}
             onBack={goBack}
+            onApproveNext={approveAndStartCreation}
             onUpdate={updateApproval}
           />
+        ) : null;
+      case "content-creation":
+        return selectedApproval ? (
+          <ContentCreationFlow approval={selectedApproval} onBack={goBack} />
         ) : null;
       case "brands":
         return (

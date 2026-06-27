@@ -260,6 +260,7 @@ export type PortalView =
   | "brief"
   | "approvals"
   | "approval-detail"
+  | "content-creation"
   | "brands"
   | "brand-detail"
   | "broadcast"

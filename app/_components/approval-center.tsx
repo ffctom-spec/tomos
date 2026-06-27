@@ -78,10 +78,12 @@ export function ApprovalCenterView({
 export function ApprovalDetailView({
   item,
   onBack,
+  onApproveNext,
   onUpdate,
 }: {
   item: ApprovalItem;
   onBack: () => void;
+  onApproveNext: (item: ApprovalItem) => void;
   onUpdate: (id: string, status: ApprovalStatus) => void;
 }) {
   return (
@@ -121,7 +123,7 @@ export function ApprovalDetailView({
             After: 結論、根拠、比較、FAQ、商品導線の順に再構成。
           </p>
           <div className="mt-5 grid gap-2">
-            <PillButton tone="light" onClick={() => onUpdate(item.id, "Approved")}>
+            <PillButton tone="light" onClick={() => onApproveNext(item)}>
               承認して次へ
             </PillButton>
             <PillButton onClick={() => onUpdate(item.id, "Revision requested")}>

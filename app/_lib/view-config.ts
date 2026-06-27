@@ -9,6 +9,7 @@ export const viewConfig: Record<PortalView, PortalViewConfig> = {
   brief: { label: "Executive Brief", level: 2, parent: "command" },
   approvals: { label: "Approval Center", level: 2, parent: "command" },
   "approval-detail": { label: "Approval Item", level: 3, parent: "approvals" },
+  "content-creation": { label: "Content Creation Flow", level: 3, parent: "approval-detail" },
   brands: { label: "Brand Portfolio", level: 2, parent: "command" },
   "brand-detail": { label: "Brand Detail", level: 3, parent: "brands" },
   broadcast: { label: "Broadcast Center", level: 2, parent: "command" },
