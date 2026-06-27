@@ -2,6 +2,24 @@
 
 TOMOS is a private AI Brand Operating System for user-owned brands, SNS operations, AIO intelligence, content review, commerce analytics, and approval-based execution.
 
+## Beta 0.2 Executive Mode
+
+TOMOS Beta 0.2 adds Executive Mode, a mobile-first dashboard for iPhone. It is designed for a 5-minute executive check-in: review only the essential brief, approve or hold key proposals, consult GPT/Gemini, and leave detailed operating work to AI.
+
+Mobile priorities:
+
+- Executive Dashboard only on the first screen
+- Good Morning / Today / System Health hero
+- Today's Executive Brief reduced to five decisions
+- Approval Queue with swipe-inspired approve and hold actions
+- Horizontal AI Engine status cards
+- Five KPI signals only
+- Fixed Quick Actions
+- Floating TOMOS AI Assistant
+- Notification Center for approvals, AI proposals, revenue, AIO, and SNS alerts
+
+Desktop remains an Operating Center, tablet becomes a manager view, and mobile becomes Executive Mode.
+
 ## Beta 0.1 API-ready MVP Scope
 
 TOMOS Beta 0.1 is an API-ready MVP. The UI shows the intended production operating screen, information architecture, and AI engine structure, while all data is currently mock data.

@@ -1,20 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   activityTimeline,
   aiEngines,
   approvalItems,
-  automationRules,
   broadcastIdeas,
-  commerceAnalytics,
-  contentReview,
-  decisionLogs,
   executiveBrief,
-  knowledgeVaultItems,
-  navItems,
-  productOpportunities,
-  snsHealth,
   userBrands,
 } from "@/app/_lib/portal-data";
 import type {
@@ -23,53 +15,62 @@ import type {
   AiProvider,
   ApprovalItem,
   ApprovalStatus,
-  BroadcastIdea,
-  ContentReview,
   DecisionLog,
   EngineStatus,
-  PublicStatus,
 } from "@/app/_lib/portal-types";
 
 const statusStyles: Record<EngineStatus, string> = {
-  Running: "bg-emerald-300/10 text-emerald-200",
-  Monitoring: "bg-cyan-300/10 text-cyan-200",
-  Queued: "bg-amber-300/10 text-amber-200",
-  Learning: "bg-violet-300/10 text-violet-200",
-  "Waiting approval": "bg-white text-black",
-  Paused: "bg-zinc-300/10 text-zinc-300",
-};
-
-const publicStatusStyles: Record<PublicStatus, string> = {
-  Private: "bg-zinc-300/10 text-zinc-200",
-  Draft: "bg-amber-300/10 text-amber-200",
-  Approved: "bg-emerald-300/10 text-emerald-200",
-  Published: "bg-cyan-300/10 text-cyan-200",
+  Running: "bg-emerald-300/15 text-emerald-100 ring-emerald-300/20",
+  Monitoring: "bg-sky-300/15 text-sky-100 ring-sky-300/20",
+  Queued: "bg-amber-300/15 text-amber-100 ring-amber-300/20",
+  Learning: "bg-violet-300/15 text-violet-100 ring-violet-300/20",
+  "Waiting approval": "bg-white text-black ring-white/40",
+  Paused: "bg-zinc-300/10 text-zinc-300 ring-zinc-300/15",
 };
 
 const approvalLabels: Record<ApprovalStatus, string> = {
-  Pending: "未判断",
-  Approved: "承認済み",
+  Pending: "承認待ち",
+  Approved: "承認",
   "Revision requested": "修正依頼",
   "On hold": "保留",
   Rejected: "却下",
 };
 
-function SectionHeading({ title, detail }: { title: string; detail?: string }) {
-  return (
-    <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-      <h2 className="text-lg font-semibold text-white">{title}</h2>
-      {detail ? <p className="text-sm text-zinc-500">{detail}</p> : null}
-    </div>
-  );
-}
+const todayBrief = [
+  "今日一番重要な判断",
+  "今日の売上チャンス",
+  "今日作るべきKnowledge Cast",
+  "今日伸びそうなテーマ",
+  "今日やらない方がいいこと",
+];
 
-function MetricBar({ value }: { value: number }) {
-  return (
-    <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-      <div className="h-full rounded-full bg-white" style={{ width: `${value}%` }} />
-    </div>
-  );
-}
+const quickPrompts = {
+  Broadcast: "今日作るべきBroadcast Missionを1つだけ選び、承認判断の理由を短く出してください。",
+  Review: "今日レビューすべきコンテンツの改善点を、ブランド適合性とAIO観点で要約してください。",
+  Product: "今日の売上チャンスが高い商品候補を1つ選び、理由とリスクを出してください。",
+  Approvals: "承認待ちの中から、今すぐ判断すべき項目を優先順位つきで示してください。",
+  "Executive Brief": "今日のExecutive Briefを5行で再要約してください。",
+};
+
+const connectedServices = [
+  "OpenAI",
+  "Anthropic",
+  "Google",
+  "YouTube",
+  "Instagram",
+  "Threads",
+  "Pinterest",
+  "Shopify",
+  "BASE",
+  "Mercari",
+  "Analytics",
+  "Search Console",
+  "GitHub",
+  "Vercel",
+  "Slack",
+  "Notion",
+  "Cron",
+];
 
 function addOperationLog(
   previous: ActivityTimelineItem[],
@@ -85,19 +86,55 @@ function addOperationLog(
   return [{ id: `local-${now.getTime()}`, time, title, detail, engine }, ...previous];
 }
 
+function SectionTitle({ title, detail }: { title: string; detail?: string }) {
+  return (
+    <div className="mb-4 flex items-end justify-between gap-4">
+      <div>
+        <p className="text-[11px] uppercase tracking-[0.2em] text-zinc-500">
+          Executive Mode
+        </p>
+        <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+          {title}
+        </h2>
+      </div>
+      {detail ? <p className="text-xs text-zinc-500">{detail}</p> : null}
+    </div>
+  );
+}
+
+function HealthRing({ value }: { value: number }) {
+  return (
+    <div className="relative grid size-24 place-items-center rounded-full bg-[conic-gradient(white_0deg,white_352deg,rgba(255,255,255,0.12)_352deg)] p-1 shadow-[0_0_40px_rgba(255,255,255,0.12)]">
+      <div className="grid size-full place-items-center rounded-full bg-black">
+        <div className="text-center">
+          <p className="text-3xl font-semibold tracking-tight">{value}%</p>
+          <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+            Health
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PortalShell() {
   const [approvals, setApprovals] = useState<ApprovalItem[]>(approvalItems);
-  const [broadcasts, setBroadcasts] = useState<BroadcastIdea[]>(broadcastIdeas);
-  const [review, setReview] = useState<ContentReview>(contentReview);
   const [timeline, setTimeline] =
     useState<ActivityTimelineItem[]>(activityTimeline);
-  const [logs, setLogs] = useState<DecisionLog[]>(decisionLogs);
+  const [logs, setLogs] = useState<DecisionLog[]>([]);
+  const [selectedApproval, setSelectedApproval] = useState<ApprovalItem | null>(
+    null,
+  );
+  const [showAssistant, setShowAssistant] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [aiProvider, setAiProvider] = useState<AiProvider>("openai");
   const [aiPrompt, setAiPrompt] = useState(
-    "今日のExecutive Approvalから、最優先で承認すべきBroadcast Missionを1つ選んでください。",
+    "今日の判断で、今すぐ承認すべきものを1つだけ教えてください。",
   );
   const [aiResponse, setAiResponse] = useState<AiConsoleResponse | null>(null);
   const [aiStatus, setAiStatus] = useState<"idle" | "loading" | "error">("idle");
+  const touchStartX = useRef<number | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const counts = useMemo(
     () => ({
@@ -107,6 +144,19 @@ export function PortalShell() {
       rejected: approvals.filter((item) => item.status === "Rejected").length,
     }),
     [approvals],
+  );
+
+  const primaryBrand = userBrands[0];
+  const kpis = [
+    { label: "AIO Score", value: String(primaryBrand.aioScore), detail: "+8" },
+    { label: "SNS Health", value: String(primaryBrand.snsHealth), detail: "Learning" },
+    { label: "Revenue", value: "¥115K", detail: "+12%" },
+    { label: "Knowledge Assets", value: String(primaryBrand.knowledgeAssets), detail: "+9" },
+    { label: "Pending", value: String(counts.pending), detail: "Approval" },
+  ];
+
+  const visibleEngines = aiEngines.filter((engine) =>
+    ["research", "aio", "sns", "commerce", "vault"].includes(engine.id),
   );
 
   function updateApproval(id: string, status: ApprovalStatus) {
@@ -119,70 +169,66 @@ export function PortalShell() {
     setLogs((items) => [
       {
         id: `decision-${Date.now()}`,
-        title: `${target.title}を${approvalLabels[status]}に変更`,
-        basis: `ユーザーが${target.type}に対して${approvalLabels[status]}を選択。`,
+        title: `${target.type}を${approvalLabels[status]}`,
+        basis: `${target.brand} / ${target.title}`,
         expectedEffect:
           status === "Approved"
-            ? "AIが次の制作・配信・資産化ステップへ進みます。"
-            : "AIが状態に応じて次の提案を調整します。",
-        risk: "Demo Modeのため状態はブラウザ内のみで保持されます。",
+            ? "AIが配信準備、Knowledge Vault化、Learning Loopへ進みます。"
+            : "AIが次の提案を再調整します。",
+        risk: "Beta 0.2ではブラウザ内状態のみ更新されます。",
         nextAction:
           status === "Approved"
-            ? "配信準備、Knowledge Vault化、Learning Loop監視へ進む。"
-            : "修正案または再提案を生成する。",
+            ? "Broadcast Missionと公開前チェックへ進む。"
+            : "保留または再提案としてExecutive Queueに残す。",
       },
       ...items,
     ]);
   }
 
-  function approveBroadcast(id: string) {
-    const target = broadcasts.find((item) => item.id === id);
-    setBroadcasts((items) =>
-      items.map((item) =>
-        item.id === id ? { ...item, status: "Preparing" } : item,
-      ),
-    );
-    if (!target) return;
-
+  function approveBroadcast() {
+    const target = broadcastIdeas[0];
     setTimeline((items) =>
       addOperationLog(
         items,
-        "Broadcast Mission配信準備",
-        `${target.title}を${target.suggestedBrand}向けに配信準備中へ変更。`,
-        "Broadcast Center",
+        "Broadcast Approved",
+        `${target.title}を${target.suggestedBrand}向けに準備。`,
+        "Executive Mode",
       ),
     );
-    setLogs((items) => [
-      {
-        id: `broadcast-${Date.now()}`,
-        title: `${target.title}を配信準備中に変更`,
-        basis: `AIO ${target.aioScore} / SNS ${target.snsPotential} / Product ${target.productFit}`,
-        expectedEffect: "媒体別ドラフト、FAQ、商品導線の生成が始まる。",
-        risk: "公開はまだ行われません。ユーザー承認後のみ外部公開されます。",
-        nextAction: "Content FactoryでYouTube、Instagram、Blog、FAQへ展開。",
-      },
-      ...items,
-    ]);
   }
 
-  function applyRewrite() {
-    setReview((item) => ({ ...item, before: item.after, status: "Applied" }));
-    setLogs((items) => [
-      {
-        id: `rewrite-${Date.now()}`,
-        title: "Content Review AIのリライトを適用",
-        basis: "ブランド適合性、読みやすさ、AIO引用適性が改善されたため。",
-        expectedEffect: "保存率、SEO、AI引用、商品導線の改善。",
-        risk: "表現が強くなりすぎる場合は再レビューが必要。",
-        nextAction: "適用済みリード文をApproval Centerへ送る。",
-      },
-      ...items,
-    ]);
+  function startLongPress(item: ApprovalItem) {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+    longPressTimer.current = setTimeout(() => {
+      setSelectedApproval(item);
+    }, 520);
   }
 
-  async function submitAiConsole() {
+  function clearLongPress() {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+  }
+
+  function handleSwipe(item: ApprovalItem, endX: number) {
+    if (touchStartX.current === null) return;
+    const delta = endX - touchStartX.current;
+    touchStartX.current = null;
+
+    if (delta > 64) {
+      updateApproval(item.id, "Approved");
+    }
+    if (delta < -64) {
+      updateApproval(item.id, "On hold");
+    }
+  }
+
+  async function submitAiConsole(prompt = aiPrompt) {
     setAiStatus("loading");
     setAiResponse(null);
+    setShowAssistant(true);
 
     try {
       const response = await fetch("/api/ai", {
@@ -192,7 +238,7 @@ export function PortalShell() {
         },
         body: JSON.stringify({
           provider: aiProvider,
-          prompt: aiPrompt,
+          prompt,
         }),
       });
 
@@ -206,9 +252,9 @@ export function PortalShell() {
       setTimeline((items) =>
         addOperationLog(
           items,
-          `${data.provider === "openai" ? "GPT" : "Gemini"}連携テスト`,
-          `${data.model} / ${data.mode} modeでTOMOS指令を処理。`,
-          "Mobile AI Console",
+          `${data.provider === "openai" ? "GPT" : "Gemini"} Assistant`,
+          `${data.model} / ${data.mode} modeでExecutive判断を生成。`,
+          "AI Assistant",
         ),
       );
     } catch {
@@ -216,489 +262,456 @@ export function PortalShell() {
     }
   }
 
+  function handleQuickAction(label: keyof typeof quickPrompts) {
+    const prompt = quickPrompts[label];
+    setAiPrompt(prompt);
+    if (label === "Broadcast") {
+      approveBroadcast();
+    }
+    void submitAiConsole(prompt);
+  }
+
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_72%_8%,rgba(255,255,255,0.14),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.06),transparent_38%)]" />
-      <div className="relative flex min-h-screen flex-col lg:flex-row">
-        <aside className="flex w-full flex-col justify-between border-b border-white/10 bg-black/80 px-5 py-5 backdrop-blur-xl lg:sticky lg:top-0 lg:h-screen lg:w-72 lg:border-b-0 lg:border-r lg:px-6 lg:py-7">
-          <div>
+    <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_-10%,rgba(255,255,255,0.18),transparent_32%),radial-gradient(circle_at_12%_18%,rgba(255,255,255,0.08),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.08),transparent_34%)]" />
+      <div className="pointer-events-none fixed inset-x-0 top-0 z-20 mx-auto h-8 w-36 rounded-b-[2rem] bg-black/80 shadow-[0_12px_50px_rgba(255,255,255,0.08)] ring-1 ring-white/10 sm:hidden" />
+
+      <div className="relative mx-auto flex min-h-screen w-full max-w-[1500px] flex-col pb-28 md:px-6 lg:flex-row lg:gap-6 lg:pb-8">
+        <aside className="hidden w-72 shrink-0 py-6 lg:block">
+          <div className="sticky top-6 rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-2xl">
             <div className="flex items-center gap-3">
-              <div className="grid size-11 place-items-center rounded-lg border border-white/15 bg-white text-base font-semibold text-black">
+              <div className="grid size-11 place-items-center rounded-2xl bg-white text-base font-semibold text-black">
                 T
               </div>
               <div>
-                <p className="text-sm font-semibold tracking-[0.3em] text-white">
-                  TOMOS
-                </p>
-                <p className="text-xs tracking-[0.18em] text-zinc-500">
-                  Beta 0.1 / API-ready Demo
-                </p>
+                <p className="text-sm font-semibold tracking-[0.3em]">TOMOS</p>
+                <p className="text-xs text-zinc-500">Beta 0.2 / Operating Center</p>
               </div>
             </div>
-            <nav className="mt-8 grid gap-1.5">
-              {navItems.map((item) => (
-                <a
-                  className={`flex min-h-11 items-center justify-between rounded-lg px-3 text-sm transition ${
-                    item.active
-                      ? "border border-white/10 bg-white/[0.08] text-white"
-                      : "text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
-                  }`}
-                  href="#"
-                  key={item.label}
-                >
-                  <span>{item.label}</span>
-                  {item.badge ? (
-                    <span className="rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-zinc-400">
-                      {item.badge}
-                    </span>
-                  ) : null}
-                </a>
-              ))}
-            </nav>
-          </div>
-          <div className="mt-6 rounded-lg border border-white/10 bg-white/[0.04] p-4">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-zinc-500">
-              Private Workspace
-            </p>
-            <p className="mt-3 text-sm font-medium text-white">
-              Login required in production
-            </p>
-            <p className="mt-3 text-xs leading-5 text-zinc-500">
-              API接続前のMVPです。操作状態はブラウザ内のみで反映されます。
-            </p>
+            <div className="mt-8 grid gap-2">
+              {["Executive Dashboard", "AI Engines", "Approval Queue", "KPI", "Timeline", "Integrations"].map(
+                (item) => (
+                  <div
+                    className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-zinc-300 first:bg-white first:text-black"
+                    key={item}
+                  >
+                    {item}
+                  </div>
+                ),
+              )}
+            </div>
+            <div className="mt-8 rounded-2xl border border-white/10 bg-black/30 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                Mode
+              </p>
+              <p className="mt-2 text-lg font-semibold">Operating Center</p>
+              <p className="mt-2 text-xs leading-5 text-zinc-500">
+                Desktopは全体把握。MobileはExecutive判断だけに圧縮。
+              </p>
+            </div>
           </div>
         </aside>
 
-        <main className="flex-1 px-5 py-6 sm:px-8 lg:px-10 lg:py-8">
-          <header className="border-b border-white/10 pb-6">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <main className="w-full min-w-0 px-4 pt-10 sm:px-6 md:pt-6 lg:px-0">
+          <header className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-5 shadow-2xl shadow-black/50 backdrop-blur-2xl sm:p-7 lg:p-8">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm text-zinc-500">
-                  TOMOS Beta 0.1 / API-ready Demo
-                </p>
-                <h1 className="mt-2 max-w-4xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                  TOMOS Command Center
+                <p className="text-sm text-zinc-400">Good Morning,</p>
+                <h1 className="mt-1 text-4xl font-semibold tracking-tight sm:text-6xl">
+                  Tom.
                 </h1>
-                <p className="mt-4 max-w-3xl text-sm leading-6 text-zinc-400 sm:text-base">
-                  Private AI Brand Operating System。ユーザー所有ブランドをAIが24時間Operatingし、
-                  ユーザーは承認、修正依頼、保留、却下だけで運用します。
-                </p>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {[
-                  "Private AI Brand Operating System",
-                  "Login required",
-                  "Always-on AI Engines",
-                  "Approval-first Workflow",
-                ].map((signal) => (
-                  <div
-                    className="rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-zinc-300"
-                    key={signal}
-                  >
-                    {signal}
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="mt-5 rounded-lg border border-amber-300/20 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-              Demo Mode: API連携前のMVPです。操作状態はブラウザ内でのみ反映されます。
-            </div>
-          </header>
-
-          <section className="py-6">
-            <div className="rounded-lg border border-white/10 bg-white/[0.05] p-5 shadow-2xl shadow-black/30">
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                    iPhone 16 Pro Ready / GPT + Gemini
-                  </p>
-                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white">
-                    Mobile AI Console
-                  </h2>
-                  <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
-                    iPhoneからTOMOSへ指示し、GPTまたはGeminiでExecutive Brief、Broadcast Mission、
-                    Approval判断のたたき台を生成します。APIキー未設定時はmockで安全に動作します。
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 gap-2 rounded-full border border-white/10 bg-black/40 p-1">
-                  {[
-                    ["openai", "GPT"],
-                    ["gemini", "Gemini"],
-                  ].map(([provider, label]) => (
-                    <button
-                      className={`min-h-10 rounded-full px-5 text-sm transition ${
-                        aiProvider === provider
-                          ? "bg-white text-black"
-                          : "text-zinc-400 hover:bg-white/[0.06] hover:text-white"
-                      }`}
-                      key={provider}
-                      onClick={() => setAiProvider(provider as AiProvider)}
-                      type="button"
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_320px]">
-                <textarea
-                  className="min-h-32 w-full resize-none rounded-lg border border-white/10 bg-black/40 p-4 text-base leading-7 text-white outline-none transition placeholder:text-zinc-600 focus:border-white/30"
-                  onChange={(event) => setAiPrompt(event.target.value)}
-                  value={aiPrompt}
-                />
-                <div className="flex flex-col gap-3">
-                  <button
-                    className="min-h-12 rounded-full bg-white px-5 text-sm font-medium text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
-                    disabled={aiStatus === "loading"}
-                    onClick={submitAiConsole}
-                    type="button"
-                  >
-                    {aiStatus === "loading" ? "AIに接続中" : "TOMOSへ送信"}
-                  </button>
-                  <div className="rounded-lg border border-white/10 bg-black/30 p-4 text-xs leading-5 text-zinc-500">
-                    ProductionではOPENAI_API_KEYまたはGEMINI_API_KEYをVercel環境変数に設定します。
-                    現在はキー未設定でも画面が破綻しないAPI-ready MVPです。
-                  </div>
-                </div>
-              </div>
-              {aiStatus === "error" ? (
-                <div className="mt-4 rounded-lg border border-red-300/20 bg-red-300/10 p-4 text-sm text-red-100">
-                  AI Consoleの呼び出しに失敗しました。APIキー、モデル名、Vercel環境変数を確認してください。
-                </div>
-              ) : null}
-              {aiResponse ? (
-                <div className="mt-4 rounded-lg border border-white/10 bg-black/40 p-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black">
-                      {aiResponse.provider === "openai" ? "GPT" : "Gemini"}
-                    </span>
-                    <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-400">
-                      {aiResponse.mode}
-                    </span>
-                    <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-400">
-                      {aiResponse.model}
-                    </span>
-                  </div>
-                  <p className="mt-4 whitespace-pre-line text-sm leading-7 text-zinc-300">
-                    {aiResponse.output}
-                  </p>
-                </div>
-              ) : null}
-            </div>
-          </section>
-
-          <section className="grid gap-4 py-6 md:grid-cols-3 2xl:grid-cols-6">
-            {[
-              { label: "Active engines", value: "11/11", detail: "mock data / API-ready" },
-              { label: "Pending approvals", value: String(counts.pending), detail: "Executive Approval" },
-              { label: "Approved today", value: String(counts.approved), detail: "local state" },
-              { label: "On hold", value: String(counts.hold), detail: "local state" },
-              { label: "Rejected", value: String(counts.rejected), detail: "local state" },
-              { label: "System Health", value: "Beta", detail: "0.1 api-ready demo" },
-            ].map((item) => (
-              <div className="rounded-lg border border-white/10 bg-white/[0.04] p-5" key={item.label}>
-                <p className="text-sm text-zinc-500">{item.label}</p>
-                <p className="mt-4 text-3xl font-semibold tracking-tight">{item.value}</p>
-                <p className="mt-2 text-xs leading-5 text-zinc-500">{item.detail}</p>
-              </div>
-            ))}
-          </section>
-
-          <section className="py-2">
-            <SectionHeading title="Today's Executive Brief" detail="毎朝ユーザーが見る経営ブリーフ / Mock data" />
-            <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-              {executiveBrief.map((item) => (
-                <article className="rounded-lg border border-white/10 bg-white/[0.04] p-5" key={item.label}>
-                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">{item.label}</p>
-                  <h3 className="mt-3 text-lg font-semibold">{item.value}</h3>
-                  <p className="mt-3 text-sm leading-6 text-zinc-400">{item.detail}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="py-6">
-            <SectionHeading title="Always-On AI Engines" detail="11 engines / API-ready" />
-            <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-              {aiEngines.map((engine) => (
-                <article className="rounded-lg border border-white/10 bg-zinc-950/80 p-5" key={engine.id}>
-                  <div className="flex items-start justify-between gap-4">
-                    <h3 className="text-lg font-semibold">{engine.name}</h3>
-                    <span className={`rounded-full px-3 py-1 text-xs ${statusStyles[engine.status]}`}>{engine.status}</span>
-                  </div>
-                  <p className="mt-4 text-xs text-zinc-500">Last run: {engine.lastRun}</p>
-                  <p className="mt-3 text-sm leading-6 text-zinc-400">Next action: {engine.nextAction}</p>
-                  <p className="mt-3 text-sm leading-6 text-zinc-300">Output: {engine.output}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="grid gap-6 xl:grid-cols-[1fr_390px]">
-            <div>
-              <SectionHeading title="Approval Center" detail="操作可能MVP" />
-              <div className="grid gap-3">
-                {approvals.map((item) => (
-                  <article className="rounded-lg border border-white/10 bg-white/[0.04] p-5" key={item.id}>
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black">{approvalLabels[item.status]}</span>
-                          <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-400">{item.type}</span>
-                          <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-400">{item.brand}</span>
-                        </div>
-                        <h3 className="mt-3 text-lg font-semibold">{item.title}</h3>
-                        <p className="mt-2 text-sm leading-6 text-zinc-500">{item.reason}</p>
-                      </div>
-                      <div className="grid min-w-64 grid-cols-2 gap-2">
-                        {[
-                          ["承認", "Approved"],
-                          ["修正依頼", "Revision requested"],
-                          ["保留", "On hold"],
-                          ["却下", "Rejected"],
-                        ].map(([label, status]) => (
-                          <button
-                            className={`min-h-10 rounded-full px-4 text-sm transition ${status === "Approved" ? "bg-white text-black hover:bg-zinc-200" : "border border-white/10 text-zinc-300 hover:bg-white/[0.06]"}`}
-                            key={status}
-                            onClick={() => updateApproval(item.id, status as ApprovalStatus)}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
-
-            <aside>
-              <SectionHeading title="Your Brand Portfolio" detail="sample registered brands" />
-              <div className="grid gap-3">
-                {userBrands.map((brand) => (
-                  <article className="rounded-lg border border-white/10 bg-zinc-950/80 p-4" key={brand.id}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="font-semibold">{brand.name}</h3>
-                        <p className="mt-1 text-xs text-zinc-500">{brand.domain}</p>
-                      </div>
-                      <span className={`rounded-full px-3 py-1 text-xs ${publicStatusStyles[brand.publicStatus]}`}>{brand.publicStatus}</span>
-                    </div>
-                    <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                      <div className="rounded-lg border border-white/10 bg-black/30 p-3">AIO<br /><span className="text-white">{brand.aioScore}</span></div>
-                      <div className="rounded-lg border border-white/10 bg-black/30 p-3">SNS<br /><span className="text-white">{brand.snsHealth}</span></div>
-                      <div className="rounded-lg border border-white/10 bg-black/30 p-3">Assets<br /><span className="text-white">{brand.knowledgeAssets}</span></div>
-                    </div>
-                    <p className="mt-3 text-xs leading-5 text-zinc-500">Commerce Potential: {brand.commercePotential} / Approval待ち: {brand.approvalsPending}</p>
-                    <p className="mt-2 text-sm leading-6 text-zinc-300">次の推奨アクション: {brand.nextAction}</p>
-                  </article>
-                ))}
-              </div>
-            </aside>
-          </section>
-
-          <section className="py-6">
-            <SectionHeading title="Broadcast Center" detail="承認すると配信準備中に変わります" />
-            <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-5">
-              {broadcasts.map((idea) => (
-                <article className="rounded-lg border border-white/10 bg-white/[0.04] p-5" key={idea.id}>
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black">{idea.priority}</span>
-                    <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-400">{idea.status === "Preparing" ? "配信準備中" : "Ready"}</span>
-                  </div>
-                  <h3 className="mt-4 text-lg font-semibold">{idea.title}</h3>
-                  <p className="mt-2 text-sm text-zinc-500">{idea.suggestedBrand}</p>
-                  <div className="mt-4 grid gap-2 text-xs">
-                    <p>AIO Score: {idea.aioScore}</p>
-                    <p>SNS Potential: {idea.snsPotential}</p>
-                    <p>Product Fit: {idea.productFit}</p>
-                  </div>
-                  <button
-                    className="mt-4 min-h-10 w-full rounded-full bg-white px-4 text-sm font-medium text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-600 disabled:text-zinc-300"
-                    disabled={idea.status === "Preparing"}
-                    onClick={() => approveBroadcast(idea.id)}
-                  >
-                    {idea.status === "Preparing" ? "配信準備中" : "承認"}
-                  </button>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="grid gap-6 xl:grid-cols-[1fr_390px]">
-            <div className="rounded-lg border border-white/10 bg-white/[0.04] p-5">
-              <SectionHeading title="Content Review AI" detail={`Status: ${review.status}`} />
-              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">{review.assetType}</p>
-              <h3 className="mt-2 text-xl font-semibold">{review.title}</h3>
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
-                <div className="rounded-lg border border-white/10 bg-black/30 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Before</p>
-                  <p className="mt-3 text-sm leading-6 text-zinc-400">{review.before}</p>
-                </div>
-                <div className="rounded-lg border border-white/10 bg-white p-4 text-black">
-                  <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">After</p>
-                  <p className="mt-3 text-sm leading-6 text-zinc-700">{review.after}</p>
-                </div>
-              </div>
-              <div className="mt-5 grid gap-3 md:grid-cols-2">
-                {review.metrics.map((metric) => (
-                  <div key={metric.label}>
-                    <div className="mb-2 flex items-center justify-between text-xs">
-                      <span className="text-zinc-500">{metric.label}</span>
-                      <span className="text-zinc-300">{metric.value}</span>
-                    </div>
-                    <MetricBar value={metric.value} />
-                  </div>
-                ))}
               </div>
               <button
-                className="mt-5 min-h-10 rounded-full bg-white px-5 text-sm font-medium text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-600 disabled:text-zinc-300"
-                disabled={review.status === "Applied"}
-                onClick={applyRewrite}
+                className="relative grid size-12 place-items-center rounded-full border border-white/10 bg-black/40 text-xl backdrop-blur-xl transition hover:bg-white/10"
+                onClick={() => setShowNotifications((value) => !value)}
+                type="button"
               >
-                {review.status === "Applied" ? "Applied" : "リライト適用"}
+                <span aria-hidden>⌁</span>
+                <span className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-white text-[10px] font-semibold text-black">
+                  {counts.pending}
+                </span>
               </button>
             </div>
 
-            <aside>
-              <SectionHeading title="SNS Health" detail="Mock data" />
-              <div className="grid gap-3">
-                {snsHealth.map((item) => (
-                  <article className="rounded-lg border border-white/10 bg-zinc-950/80 p-4" key={item.channel}>
-                    <p className="font-medium">{item.channel} / {item.metric}</p>
-                    <p className="mt-1 text-2xl font-semibold">{item.value}</p>
-                    <p className="mt-3 text-xs leading-5 text-zinc-500">改善ポイント: {item.issue}</p>
-                    <p className="mt-2 text-sm leading-6 text-zinc-300">次のBroadcast Mission: {item.nextPost}</p>
-                  </article>
+            <div className="mt-8 grid gap-5 md:grid-cols-[1fr_140px] md:items-end">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-zinc-500">
+                  Today
+                </p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight">
+                  2026/06/27
+                </p>
+                <div className="mt-5 inline-flex items-center gap-3 rounded-full border border-white/10 bg-black/35 px-4 py-2 text-sm text-zinc-300">
+                  <span className="size-2 rounded-full bg-emerald-300 shadow-[0_0_18px_rgba(110,231,183,0.9)]" />
+                  AIが24時間動作中
+                </div>
+              </div>
+              <HealthRing value={98} />
+            </div>
+          </header>
+
+          {showNotifications ? (
+            <section className="mt-4 rounded-3xl border border-white/10 bg-zinc-950/90 p-5 backdrop-blur-2xl">
+              <SectionTitle title="Notification Center" detail="live signals" />
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                {[
+                  ["未承認", `${counts.pending}件`],
+                  ["AI提案", "12件"],
+                  ["売上変化", "+12%"],
+                  ["AIO急上昇", "土壌改良"],
+                  ["SNS異常", "Shorts維持率"],
+                ].map(([label, value]) => (
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={label}>
+                    <p className="text-xs text-zinc-500">{label}</p>
+                    <p className="mt-2 text-lg font-semibold">{value}</p>
+                  </div>
                 ))}
               </div>
-            </aside>
+            </section>
+          ) : null}
+
+          <section className="mt-5">
+            <SectionTitle title="Today's Executive Brief" detail="5 decisions" />
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              {todayBrief.map((label, index) => {
+                const item = executiveBrief[index];
+                return (
+                  <article
+                    className="rounded-3xl border border-white/10 bg-white/[0.045] p-5 backdrop-blur-xl"
+                    key={label}
+                  >
+                    <p className="text-xs text-zinc-500">{label}</p>
+                    <h3 className="mt-3 text-lg font-semibold leading-tight">
+                      {item.value}
+                    </h3>
+                    <p className="mt-3 text-sm leading-6 text-zinc-500">
+                      {item.detail}
+                    </p>
+                  </article>
+                );
+              })}
+            </div>
           </section>
 
-          <section className="grid gap-6 py-6 xl:grid-cols-[1fr_1fr]">
-            <div>
-              <SectionHeading title="Commerce Analytics" detail="API-ready mock" />
-              <div className="grid gap-3">
-                {commerceAnalytics.map((item) => (
-                  <article className="rounded-lg border border-white/10 bg-white/[0.04] p-4" key={item.post}>
-                    <h3 className="font-medium">{item.post}</h3>
-                    <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+          <section className="mt-7">
+            <SectionTitle title="Approval Queue" detail="右スワイプ承認 / 左スワイプ保留" />
+            <div className="grid gap-3 xl:grid-cols-2">
+              {approvals.slice(0, 5).map((item) => (
+                <article
+                  className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.055] p-1 backdrop-blur-xl"
+                  key={item.id}
+                  onTouchEnd={(event) =>
+                    handleSwipe(item, event.changedTouches[0]?.clientX ?? 0)
+                  }
+                  onTouchStart={(event) => {
+                    touchStartX.current = event.touches[0]?.clientX ?? null;
+                    startLongPress(item);
+                  }}
+                  onPointerDown={() => startLongPress(item)}
+                  onPointerUp={clearLongPress}
+                  onPointerLeave={clearLongPress}
+                >
+                  <div className="absolute inset-y-0 left-0 grid w-24 place-items-center bg-emerald-300/15 text-xs text-emerald-100">
+                    承認
+                  </div>
+                  <div className="absolute inset-y-0 right-0 grid w-24 place-items-center bg-amber-300/15 text-xs text-amber-100">
+                    保留
+                  </div>
+                  <div className="relative rounded-[1.55rem] bg-black/80 p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                          {item.type}
+                        </p>
+                        <h3 className="mt-2 text-xl font-semibold leading-tight">
+                          {item.title}
+                        </h3>
+                        <p className="mt-2 text-sm text-zinc-500">{item.brand}</p>
+                      </div>
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black">
+                        {approvalLabels[item.status]}
+                      </span>
+                    </div>
+                    <p className="mt-4 text-sm leading-6 text-zinc-400">
+                      {item.reason}
+                    </p>
+                    <div className="mt-4 grid grid-cols-4 gap-2">
                       {[
-                        ["流入数", item.traffic],
-                        ["商品クリック", item.productClicks],
-                        ["購入数", item.purchases],
-                        ["CVR", item.cvr],
-                        ["売上", item.revenue],
-                      ].map(([label, value]) => (
-                        <div className="rounded-lg border border-white/10 bg-black/30 p-3" key={label}>
-                          <p className="text-zinc-500">{label}</p>
-                          <p className="mt-1 text-zinc-100">{value}</p>
-                        </div>
+                        ["承認", "Approved"],
+                        ["修正", "Revision requested"],
+                        ["保留", "On hold"],
+                        ["却下", "Rejected"],
+                      ].map(([label, status]) => (
+                        <button
+                          className={`min-h-10 rounded-full text-xs transition ${
+                            status === "Approved"
+                              ? "bg-white text-black"
+                              : "border border-white/10 text-zinc-300 hover:bg-white/10"
+                          }`}
+                          key={status}
+                          onClick={() =>
+                            updateApproval(item.id, status as ApprovalStatus)
+                          }
+                          type="button"
+                        >
+                          {label}
+                        </button>
                       ))}
                     </div>
-                    <p className="mt-3 text-xs leading-5 text-zinc-500">売れた理由: {item.soldReason}</p>
-                    <p className="mt-2 text-xs leading-5 text-zinc-500">売れなかった理由: {item.missedReason}</p>
-                    <p className="mt-2 text-sm leading-6 text-zinc-300">次の改善案: {item.nextAction}</p>
-                  </article>
+                    <p className="mt-3 text-center text-[11px] text-zinc-600">
+                      swipe right approve / swipe left hold / long press detail
+                    </p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="mt-7">
+            <SectionTitle title="AI Engines" detail="mobile horizontal" />
+            <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-5 md:overflow-visible md:px-0">
+              {visibleEngines.map((engine) => (
+                <article
+                  className="min-w-40 snap-start rounded-3xl border border-white/10 bg-white/[0.045] p-5"
+                  key={engine.id}
+                >
+                  <p className="text-2xl font-semibold">
+                    {engine.name.replace(" Engine", "").replace(" Intelligence", "")}
+                  </p>
+                  <span
+                    className={`mt-4 inline-flex rounded-full px-3 py-1 text-xs ring-1 ${statusStyles[engine.status]}`}
+                  >
+                    {engine.status}
+                  </span>
+                  <p className="mt-4 text-xs leading-5 text-zinc-500">
+                    {engine.lastRun}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="mt-7">
+            <SectionTitle title="Today's KPI" detail="5 signals only" />
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+              {kpis.map((item) => (
+                <article
+                  className="rounded-3xl border border-white/10 bg-white/[0.055] p-5"
+                  key={item.label}
+                >
+                  <p className="text-xs text-zinc-500">{item.label}</p>
+                  <p className="mt-4 text-3xl font-semibold tracking-tight">
+                    {item.value}
+                  </p>
+                  <p className="mt-2 text-xs text-zinc-500">{item.detail}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="mt-7 grid gap-5 lg:grid-cols-[1fr_380px]">
+            <div>
+              <SectionTitle title="Activity Timeline" detail="today" />
+              <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-5">
+                {[
+                  ["06:00", "Research Complete", "Research Engine"],
+                  ["08:00", "Executive Brief", "Approval Engine"],
+                  ["10:00", "Instagram改善", "SNS Engine"],
+                  ["13:00", "Knowledge Cast生成", "Knowledge Engine"],
+                  ["16:00", "Commerce分析", "Commerce Engine"],
+                  ...timeline.slice(0, 2).map((item) => [
+                    item.time,
+                    item.title,
+                    item.engine,
+                  ]),
+                ].map(([time, title, engine], index) => (
+                  <div className="grid grid-cols-[64px_24px_1fr] gap-3" key={`${time}-${title}-${index}`}>
+                    <p className="pt-1 text-sm font-medium text-zinc-300">{time}</p>
+                    <div className="flex flex-col items-center">
+                      <span className="mt-1 size-2.5 rounded-full bg-white" />
+                      <span className="h-full min-h-10 w-px bg-white/10" />
+                    </div>
+                    <div className="pb-5">
+                      <p className="font-medium text-white">{title}</p>
+                      <p className="mt-1 text-xs text-zinc-500">{engine}</p>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
-            <div>
-              <SectionHeading title="Product Opportunity" detail="AI item expansion" />
-              <div className="overflow-x-auto rounded-lg border border-white/10">
-                <div className="min-w-[760px]">
-                  <div className="grid grid-cols-[1.3fr_repeat(6,0.8fr)] bg-white/[0.06] px-4 py-3 text-xs text-zinc-400">
-                    {["Item", "市場性", "適合", "利益", "AIO", "SNS", "推奨"].map((header) => <span key={header}>{header}</span>)}
-                  </div>
-                  {productOpportunities.map((item) => (
-                    <div className="grid grid-cols-[1.3fr_repeat(6,0.8fr)] border-t border-white/10 px-4 py-3 text-sm text-zinc-300" key={item.item}>
-                      <span className="font-medium text-white">{item.item}</span>
-                      <span>{item.market}</span>
-                      <span>{item.brandFit}</span>
-                      <span>{item.profit}</span>
-                      <span>{item.aioFit}</span>
-                      <span>{item.snsLook}</span>
-                      <span>{item.recommendation}</span>
+
+            <aside className="hidden lg:block">
+              <SectionTitle title="Connected Future" detail="API-ready" />
+              <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-5">
+                <div className="flex flex-wrap gap-2">
+                  {connectedServices.map((service) => (
+                    <span
+                      className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs text-zinc-400"
+                      key={service}
+                    >
+                      {service}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-3xl border border-white/10 bg-white/[0.045] p-5">
+                <SectionTitle title="Executive Log" detail="local" />
+                <div className="grid gap-3">
+                  {(logs.length ? logs.slice(0, 3) : [
+                    {
+                      id: "empty",
+                      title: "No manual action yet",
+                      basis: "Swipe or tap an approval to create a decision log.",
+                    },
+                  ]).map((log) => (
+                    <div className="rounded-2xl border border-white/10 bg-black/30 p-4" key={log.id}>
+                      <p className="text-sm font-medium">{log.title}</p>
+                      <p className="mt-2 text-xs leading-5 text-zinc-500">
+                        {log.basis}
+                      </p>
                     </div>
                   ))}
                 </div>
               </div>
-            </div>
-          </section>
-
-          <section className="grid gap-6 xl:grid-cols-[1fr_390px]">
-            <div>
-              <SectionHeading title="Knowledge Vault" detail="知識資産化構造" />
-              <div className="grid gap-3 md:grid-cols-3">
-                {knowledgeVaultItems.map((item) => (
-                  <article className="rounded-lg border border-white/10 bg-white/[0.04] p-4" key={item.title}>
-                    <h3 className="font-medium">{item.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-zinc-500">{item.description}</p>
-                  </article>
-                ))}
-              </div>
-            </div>
-            <aside>
-              <SectionHeading title="24h Activity Timeline" detail="local logs included" />
-              <div className="grid gap-3">
-                {timeline.map((item) => (
-                  <article className="grid gap-3 rounded-lg border border-white/10 bg-black/30 p-4 md:grid-cols-[64px_1fr]" key={item.id}>
-                    <p className="text-sm font-semibold text-white">{item.time}</p>
-                    <div>
-                      <p className="font-medium text-white">{item.title}</p>
-                      <p className="mt-1 text-xs text-zinc-500">{item.engine}</p>
-                      <p className="mt-2 text-sm leading-6 text-zinc-500">{item.detail}</p>
-                    </div>
-                  </article>
-                ))}
-              </div>
             </aside>
           </section>
 
-          <section className="grid gap-6 py-6 xl:grid-cols-[1fr_390px]">
-            <div>
-              <SectionHeading title="AI Decision Log" detail="latest operations are added here" />
-              <div className="grid gap-3">
-                {logs.map((log) => (
-                  <article className="rounded-lg border border-white/10 bg-white/[0.04] p-5" key={log.id}>
-                    <h3 className="text-lg font-semibold">{log.title}</h3>
-                    <div className="mt-4 grid gap-3 md:grid-cols-2">
-                      {[
-                        ["根拠", log.basis],
-                        ["想定効果", log.expectedEffect],
-                        ["リスク", log.risk],
-                        ["次のアクション", log.nextAction],
-                      ].map(([label, value]) => (
-                        <div className="rounded-lg border border-white/10 bg-black/30 p-4" key={label}>
-                          <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">{label}</p>
-                          <p className="mt-2 text-sm leading-6 text-zinc-300">{value}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </article>
-                ))}
-              </div>
+          <section className="mt-7 rounded-3xl border border-white/10 bg-white/[0.045] p-5 lg:hidden">
+            <SectionTitle title="Connected Future" detail="API-ready" />
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {connectedServices.map((service) => (
+                <span
+                  className="shrink-0 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs text-zinc-400"
+                  key={service}
+                >
+                  {service}
+                </span>
+              ))}
             </div>
-            <aside>
-              <SectionHeading title="Automation Rules" detail="production plan" />
-              <div className="grid gap-3">
-                {automationRules.map((rule) => (
-                  <article className="rounded-lg border border-white/10 bg-zinc-950/80 p-4" key={rule.title}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-medium">{rule.title}</p>
-                        <p className="mt-1 text-xs text-zinc-500">{rule.cadence}</p>
-                      </div>
-                      <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-400">{rule.status}</span>
-                    </div>
-                    <p className="mt-3 text-sm leading-6 text-zinc-500">{rule.target}</p>
-                  </article>
-                ))}
-              </div>
-            </aside>
           </section>
         </main>
       </div>
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-black/75 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 backdrop-blur-2xl">
+        <div className="mx-auto grid max-w-xl grid-cols-5 gap-2">
+          {(Object.keys(quickPrompts) as Array<keyof typeof quickPrompts>).map(
+            (label) => (
+              <button
+                className="min-h-14 rounded-2xl border border-white/10 bg-white/[0.06] px-1 text-[11px] text-zinc-300 transition hover:bg-white/10"
+                key={label}
+                onClick={() => handleQuickAction(label)}
+                type="button"
+              >
+                <span className="block text-lg leading-none">+</span>
+                {label}
+              </button>
+            ),
+          )}
+        </div>
+      </nav>
+
+      <button
+        className="fixed bottom-28 right-5 z-50 grid size-14 place-items-center rounded-full bg-white text-lg font-semibold text-black shadow-[0_16px_70px_rgba(255,255,255,0.22)] transition hover:scale-105"
+        onClick={() => setShowAssistant((value) => !value)}
+        type="button"
+      >
+        T
+      </button>
+
+      {showAssistant ? (
+        <div className="fixed inset-x-3 bottom-44 z-50 mx-auto max-w-md rounded-[2rem] border border-white/10 bg-zinc-950/95 p-4 shadow-2xl shadow-black backdrop-blur-2xl">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                AI Assistant
+              </p>
+              <h2 className="mt-1 text-lg font-semibold">今日の判断を相談</h2>
+            </div>
+            <div className="grid grid-cols-2 gap-1 rounded-full border border-white/10 bg-black/50 p-1">
+              {[
+                ["openai", "GPT"],
+                ["gemini", "Gemini"],
+              ].map(([provider, label]) => (
+                <button
+                  className={`rounded-full px-3 py-1 text-xs ${
+                    aiProvider === provider
+                      ? "bg-white text-black"
+                      : "text-zinc-500"
+                  }`}
+                  key={provider}
+                  onClick={() => setAiProvider(provider as AiProvider)}
+                  type="button"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <textarea
+            className="mt-4 min-h-24 w-full resize-none rounded-2xl border border-white/10 bg-black/50 p-4 text-sm leading-6 text-white outline-none focus:border-white/30"
+            onChange={(event) => setAiPrompt(event.target.value)}
+            value={aiPrompt}
+          />
+          <button
+            className="mt-3 min-h-11 w-full rounded-full bg-white px-5 text-sm font-medium text-black disabled:bg-zinc-700 disabled:text-zinc-400"
+            disabled={aiStatus === "loading"}
+            onClick={() => void submitAiConsole()}
+            type="button"
+          >
+            {aiStatus === "loading" ? "Thinking" : "Ask TOMOS"}
+          </button>
+          {aiStatus === "error" ? (
+            <p className="mt-3 rounded-2xl bg-red-400/10 p-3 text-sm text-red-100">
+              AI接続に失敗しました。環境変数を確認してください。
+            </p>
+          ) : null}
+          {aiResponse ? (
+            <div className="mt-3 max-h-56 overflow-y-auto rounded-2xl border border-white/10 bg-black/50 p-4">
+              <p className="text-xs text-zinc-500">
+                {aiResponse.provider} / {aiResponse.mode} / {aiResponse.model}
+              </p>
+              <p className="mt-3 whitespace-pre-line text-sm leading-7 text-zinc-200">
+                {aiResponse.output}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {selectedApproval ? (
+        <div className="fixed inset-0 z-[60] grid place-items-end bg-black/70 p-4 backdrop-blur-sm sm:place-items-center">
+          <div className="w-full max-w-md rounded-[2rem] border border-white/10 bg-zinc-950 p-5">
+            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+              Approval Detail
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold">{selectedApproval.title}</h2>
+            <p className="mt-2 text-sm text-zinc-500">{selectedApproval.type}</p>
+            <p className="mt-4 text-sm leading-7 text-zinc-300">
+              {selectedApproval.reason}
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button
+                className="min-h-11 rounded-full bg-white text-sm font-medium text-black"
+                onClick={() => {
+                  updateApproval(selectedApproval.id, "Approved");
+                  setSelectedApproval(null);
+                }}
+                type="button"
+              >
+                承認
+              </button>
+              <button
+                className="min-h-11 rounded-full border border-white/10 text-sm text-zinc-300"
+                onClick={() => setSelectedApproval(null)}
+                type="button"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
