@@ -244,6 +244,17 @@ export type IntegrationStatus = {
   detail: string;
 };
 
+export type IntegrationApiResponse = {
+  id: string;
+  name: string;
+  ok: boolean;
+  mode: "live" | "mock";
+  message: string;
+  checkedAt: string;
+  metrics?: Record<string, string | number>;
+  items?: Array<Record<string, string | number>>;
+};
+
 export type PortalView =
   | "command"
   | "brief"

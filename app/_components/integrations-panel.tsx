@@ -1,10 +1,14 @@
+"use client";
+
+import { useState } from "react";
 import type { IntegrationStatus } from "@/app/_lib/portal-types";
 import { GlassCard, PillButton, ViewFrame } from "@/app/_components/view-frame";
 
 const requiredEnv: Record<string, string> = {
   instagram: "META_APP_ID / META_APP_SECRET / META_ACCESS_TOKEN / INSTAGRAM_BUSINESS_ACCOUNT_ID",
   openai: "OPENAI_API_KEY / OPENAI_MODEL",
-  youtube: "YOUTUBE_API_KEY",
+  youtube: "YOUTUBE_API_KEY / YOUTUBE_CHANNEL_ID",
+  github: "GITHUB_TOKEN / GITHUB_REPOSITORY",
   analytics: "GOOGLE_API_KEY",
   "search-console": "GOOGLE_API_KEY",
   commerce: "SHOPIFY_ACCESS_TOKEN / DATABASE_URL",
@@ -14,11 +18,30 @@ export function IntegrationsPanel({
   integrations,
   onBack,
   onAction,
+  onSyncDemo,
+  onTestApi,
 }: {
   integrations: IntegrationStatus[];
   onBack: () => void;
   onAction: (title: string) => void;
+  onSyncDemo: (integration: IntegrationStatus) => Promise<void>;
+  onTestApi: (integration: IntegrationStatus) => Promise<void>;
 }) {
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+
+  async function runAction(
+    key: string,
+    callback: (integration: IntegrationStatus) => Promise<void>,
+    integration: IntegrationStatus,
+  ) {
+    setBusyAction(`${key}-${integration.id}`);
+    try {
+      await callback(integration);
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   return (
     <ViewFrame title="Integrations" detail="API接続予定画面" onBack={onBack}>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -49,12 +72,19 @@ export function IntegrationsPanel({
                 </div>
               ))}
             </div>
-            <div className="mt-5 grid gap-2 sm:grid-cols-3">
+            <div className="mt-5 grid gap-2 sm:grid-cols-2">
               <PillButton onClick={() => onAction(`${integration.name} Connect`)}>
                 Connect
               </PillButton>
-              <PillButton onClick={() => onAction(`${integration.name} Test`)}>
-                Test connection
+              <PillButton
+                onClick={() => runAction("test", onTestApi, integration)}
+              >
+                {busyAction === `test-${integration.id}` ? "Testing..." : "Test API"}
+              </PillButton>
+              <PillButton
+                onClick={() => runAction("sync", onSyncDemo, integration)}
+              >
+                {busyAction === `sync-${integration.id}` ? "Syncing..." : "Sync demo data"}
               </PillButton>
               <PillButton tone="light" onClick={() => onAction(`${integration.name} docs`)}>
                 View docs

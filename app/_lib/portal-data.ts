@@ -308,6 +308,7 @@ export const integrationStatuses = [
   { id: "instagram", name: "Instagram", status: "API-ready", detail: "Meta Instagram Graph APIへ置き換え予定" },
   { id: "openai", name: "OpenAI", status: "API-ready", detail: "Executive Brief / Content Review / AIO提案" },
   { id: "youtube", name: "YouTube", status: "Planned", detail: "動画CTR、維持率、タイトル改善" },
+  { id: "github", name: "GitHub Issues", status: "API-ready", detail: "開発Issue、改善要求、運用タスクの取り込み" },
   { id: "analytics", name: "Google Analytics", status: "Planned", detail: "流入、CV、コンテンツ別成果" },
   { id: "search-console", name: "Search Console", status: "Planned", detail: "検索意図、表示回数、AIO候補" },
   { id: "commerce", name: "Shopify / BASE / Mercari", status: "Planned", detail: "商品クリック、購入、売上連携" },

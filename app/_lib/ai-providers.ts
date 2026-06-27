@@ -229,8 +229,27 @@ export async function reviewContentWithOpenAI(
     throw new Error(`OpenAI review request failed: ${response.status}`);
   }
 
-  const data: { output_text?: string } = await response.json();
-  const parsed = JSON.parse(data.output_text ?? "{}") as Omit<
+  const data: {
+    output_text?: string;
+    output?: Array<{
+      content?: Array<{
+        text?: string;
+      }>;
+    }>;
+  } = await response.json();
+  const outputText =
+    data.output_text ??
+    data.output
+      ?.flatMap((item) => item.content ?? [])
+      .map((item) => item.text)
+      .filter(Boolean)
+      .join("\n");
+
+  if (!outputText) {
+    throw new Error("OpenAI review response did not include output text");
+  }
+
+  const parsed = JSON.parse(outputText) as Omit<
     AiReviewResponse,
     "mode" | "model"
   >;

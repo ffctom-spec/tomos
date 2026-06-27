@@ -31,6 +31,8 @@ import {
 import {
   getInstagramAnalytics,
   reviewContentWithAI,
+  syncIntegrationDemoData,
+  testIntegrationApi,
 } from "@/app/_lib/api-client";
 import { createTimelineLog } from "@/app/_lib/portal-helpers";
 import {
@@ -47,6 +49,7 @@ import type {
   BroadcastIdea,
   DecisionLog,
   InstagramAnalytics,
+  IntegrationStatus,
   KnowledgeVaultItem,
   PortalView,
   UserBrand,
@@ -245,6 +248,40 @@ export function PortalShell() {
     logAction("リライト適用", "Content Review AIのAfter文を入力欄へ適用。");
   }
 
+  async function testIntegration(integration: IntegrationStatus) {
+    try {
+      const result = await testIntegrationApi(integration.id);
+      logAction(
+        `${integration.name} APIテスト ${result.ok ? "成功" : "失敗"}`,
+        `${result.mode.toUpperCase()} / ${result.message}`,
+        "Integrations Hub",
+      );
+    } catch (error) {
+      logAction(
+        `${integration.name} APIテスト失敗`,
+        error instanceof Error ? error.message : "Integration API test failed",
+        "Integrations Hub",
+      );
+    }
+  }
+
+  async function syncDemoData(integration: IntegrationStatus) {
+    try {
+      const result = await syncIntegrationDemoData(integration.id);
+      logAction(
+        `${integration.name} demo sync ${result.ok ? "完了" : "失敗"}`,
+        `${result.mode.toUpperCase()} / ${result.message}`,
+        "Integrations Hub",
+      );
+    } catch (error) {
+      logAction(
+        `${integration.name} demo sync失敗`,
+        error instanceof Error ? error.message : "Integration demo sync failed",
+        "Integrations Hub",
+      );
+    }
+  }
+
   function renderActiveView() {
     switch (activeView) {
       case "brief":
@@ -365,6 +402,8 @@ export function PortalShell() {
             integrations={integrationStatuses}
             onAction={(title) => logAction(title, "Integration操作を記録。", "Integrations")}
             onBack={goBack}
+            onSyncDemo={syncDemoData}
+            onTestApi={testIntegration}
           />
         );
       case "command":
