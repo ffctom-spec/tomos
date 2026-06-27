@@ -203,6 +203,18 @@ export type AiReviewResponse = {
   nextActions: string[];
 };
 
+export type ReviewReference = {
+  id: string;
+  title: string;
+  thumbnail: string;
+  channel: "YouTube" | "Instagram" | "Blog" | "Pinterest";
+  publishedAt: string;
+  url: string;
+  rating: "★★★★★" | "★★★★☆" | "★★★☆☆";
+  aiEvaluation: string;
+  whyAiLikesThis: string[];
+};
+
 export type InstagramTopPost = {
   id: string;
   title: string;

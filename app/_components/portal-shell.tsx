@@ -172,6 +172,45 @@ export function PortalShell() {
     }
   }
 
+  function addBroadcastOpportunity(title: string) {
+    const idea: BroadcastIdea = {
+      id: `similar-${title}-${Date.now()}`,
+      title,
+      priority: "Medium",
+      aioScore: 82,
+      snsPotential: 84,
+      productFit: 76,
+      suggestedBrand: reviewBrand,
+      status: "Ready",
+      whyNow: ["Content Review AIが類似関心テーマとして検出", "検索・SNS・Knowledge Vaultへ展開可能"],
+      hotWords: [title, "家庭菜園", "自然農法", "保存版"],
+      aiInsight: "現在のレビュー文脈と近く、Broadcast候補として展開できます。",
+      suggestedLead: `${title}について、初心者にもわかりやすく整理します。\n保存しやすいポイントから紹介します。`,
+      suggestedStructure: ["Hook", "Problem", "Solution", "Knowledge", "Product", "CTA"],
+      whySelected: ["類似関心が高い", "FAQ化しやすい", "SNS展開しやすい"],
+      trendSources: ["Google Trends", "YouTube", "Instagram", "Pinterest", "Reddit", "Search Console"],
+      similarWinningContent: [
+        {
+          title: `${title}の基本ガイド`,
+          channel: "Blog",
+          reason: "検索意図が明確",
+          estimatedSignal: "Mock: AIO fit",
+        },
+      ],
+      contentOpportunities: ["YouTube", "Knowledge Cast", "Instagram Carousel", "Blog"],
+      productOpportunities: ["PDFガイド", "ガーデングッズ", "関連商品"],
+      confidenceScore: 82,
+      expectedImpact: { aio: 82, seo: 80, sns: 84, saves: 78, productPath: 76 },
+    };
+
+    setBroadcastIdeas((items) => [idea, ...items]);
+    logAction(
+      "Broadcast候補を追加",
+      `${title}をContent IntelligenceからBroadcast Centerへ追加。`,
+      "Content Review AI",
+    );
+  }
+
   function selectKnowledge(item: KnowledgeVaultItem) {
     setSelectedKnowledge(item);
     setPreviousView("knowledge");
@@ -279,6 +318,7 @@ export function PortalShell() {
             onBrandChange={setReviewBrand}
             onChannelChange={setReviewChannel}
             onContentChange={setReviewContent}
+            onAddOpportunity={addBroadcastOpportunity}
             onReview={runReview}
           />
         );
