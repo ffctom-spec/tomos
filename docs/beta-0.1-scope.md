@@ -1,6 +1,8 @@
 # TOMOS Beta 0.1 Scope
 
-TOMOS Beta 0.1 is an API-ready demo of a private AI Brand Operating System.
+TOMOS Beta 0.1 is an API-ready MVP of a private AI Brand Operating System.
+
+The priority is build stability, Vercel-safe rendering, and a coherent AI Brand Operating System experience before deeper API integrations.
 
 ## Included
 

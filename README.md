@@ -2,9 +2,9 @@
 
 TOMOS is a private AI Brand Operating System for user-owned brands, SNS operations, AIO intelligence, content review, commerce analytics, and approval-based execution.
 
-## Beta 0.1 Scope
+## Beta 0.1 API-ready MVP Scope
 
-TOMOS Beta 0.1 is an API-ready demo. The UI shows the intended production operating screen, information architecture, and AI engine structure, while all data is currently mock data.
+TOMOS Beta 0.1 is an API-ready MVP. The UI shows the intended production operating screen, information architecture, and AI engine structure, while all data is currently mock data.
 
 Current scope:
 
@@ -25,6 +25,8 @@ Current scope:
 - Automation Rules
 
 The dashboard is locally interactive. Approval actions, broadcast preparation, content rewrite application, system health counters, activity timeline entries, and decision logs update in browser state. State resets on refresh.
+
+Build stability is the priority for Beta 0.1: the app should compile cleanly on Vercel before deeper API, auth, and database work begins.
 
 ## API-Ready Demo
 
