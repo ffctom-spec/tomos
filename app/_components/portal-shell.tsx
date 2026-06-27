@@ -32,6 +32,13 @@ import {
   getInstagramAnalytics,
   reviewContentWithAI,
 } from "@/app/_lib/api-client";
+import { createTimelineLog } from "@/app/_lib/portal-helpers";
+import {
+  getParentView,
+  isDetailView,
+  portalNavigationItems,
+  portalQuickActions,
+} from "@/app/_lib/view-config";
 import type {
   ActivityTimelineItem,
   AiReviewResponse,
@@ -44,42 +51,6 @@ import type {
   PortalView,
   UserBrand,
 } from "@/app/_lib/portal-types";
-
-const navItems: Array<[string, PortalView]> = [
-  ["Command Center", "command"],
-  ["Executive Brief", "brief"],
-  ["Approval Center", "approvals"],
-  ["Brand Portfolio", "brands"],
-  ["Broadcast Center", "broadcast"],
-  ["Content Review AI", "content-review"],
-  ["SNS Health", "sns-health"],
-  ["Commerce", "commerce"],
-  ["Product", "product"],
-  ["Knowledge Vault", "knowledge"],
-  ["Integrations", "integrations"],
-];
-
-const quickActions: Array<[string, PortalView]> = [
-  ["承認", "approvals"],
-  ["配信", "broadcast"],
-  ["SNS", "sns-health"],
-  ["商品", "product"],
-  ["連携", "integrations"],
-];
-
-function addTimelineLog(
-  previous: ActivityTimelineItem[],
-  title: string,
-  detail: string,
-  engine = "TOMOS",
-) {
-  const now = new Date();
-  const time = `${String(now.getHours()).padStart(2, "0")}:${String(
-    now.getMinutes(),
-  ).padStart(2, "0")}`;
-
-  return [{ id: `local-${now.getTime()}`, time, title, detail, engine }, ...previous];
-}
 
 export function PortalShell() {
   const [activeView, setActiveView] = useState<PortalView>("command");
@@ -132,20 +103,15 @@ export function PortalShell() {
   }
 
   function goBack() {
-    if (
-      activeView === "approval-detail" ||
-      activeView === "brand-detail" ||
-      activeView === "broadcast-detail" ||
-      activeView === "knowledge-detail"
-    ) {
+    if (isDetailView(activeView)) {
       setActiveView(previousView);
       return;
     }
-    setActiveView("command");
+    setActiveView(getParentView(activeView));
   }
 
   function logAction(title: string, detail: string, engine = "Executive Approval") {
-    setTimeline((items) => addTimelineLog(items, title, detail, engine));
+    setTimeline((items) => [createTimelineLog(title, detail, engine), ...items]);
     setLogs((items) => [
       {
         id: `log-${Date.now()}`,
@@ -392,7 +358,7 @@ export function PortalShell() {
               </div>
             </div>
             <nav className="mt-8 grid gap-2">
-              {navItems.map(([label, view]) => (
+              {portalNavigationItems.map(({ label, view }) => (
                 <button
                   className={`min-h-11 rounded-xl px-4 text-left text-sm transition ${
                     activeView === view
@@ -469,7 +435,7 @@ export function PortalShell() {
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-black/80 px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 backdrop-blur-2xl lg:hidden">
         <div className="mx-auto grid max-w-xl grid-cols-5 gap-2">
-          {quickActions.map(([label, view]) => (
+          {portalQuickActions.map(({ label, view }) => (
             <button
               className={`min-h-14 rounded-2xl border border-white/10 px-1 text-[11px] transition ${
                 activeView === view

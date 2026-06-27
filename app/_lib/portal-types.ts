@@ -225,3 +225,14 @@ export type PortalView =
   | "knowledge"
   | "knowledge-detail"
   | "integrations";
+
+export type PortalViewConfig = {
+  label: string;
+  level: 1 | 2 | 3;
+  parent?: PortalView;
+};
+
+export type PortalNavigationItem = {
+  label: string;
+  view: PortalView;
+};
