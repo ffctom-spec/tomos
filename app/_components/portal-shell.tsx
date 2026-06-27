@@ -346,6 +346,27 @@ export function PortalShell() {
                 "Content Creation Flow",
               );
             }}
+            onPhotoAssetSelected={(fileName) =>
+              logAction(
+                "Photo asset selected",
+                `${fileName} をContent Creation Flowのブラウザ内プレビューに追加。`,
+                "Content Creation Flow",
+              )
+            }
+            onPostSimulationGenerated={() =>
+              logAction(
+                "AI post simulation generated",
+                "AI Command Scoreと7日間のAI推定パフォーマンスを生成。",
+                "Content Creation Flow",
+              )
+            }
+            onSeriesOpportunityAdded={(title) =>
+              logAction(
+                "Series opportunity added",
+                `${title} を次の投稿候補として追加。`,
+                "Content Creation Flow",
+              )
+            }
             onDraftSaved={() =>
               logAction(
                 "Instagram draft prepared",
