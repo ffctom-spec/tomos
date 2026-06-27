@@ -330,7 +330,32 @@ export function PortalShell() {
         ) : null;
       case "content-creation":
         return selectedApproval ? (
-          <ContentCreationFlow approval={selectedApproval} onBack={goBack} />
+          <ContentCreationFlow
+            approval={selectedApproval}
+            instagramConnected={instagram.connectionStatus === "connected"}
+            onBack={goBack}
+            onCreativeBriefGenerated={() => {
+              logAction(
+                "AI Creative Brief generated",
+                "投稿案を生成。AI需要仮説、投稿コンセプト、投稿例をPublish Reviewへ反映。",
+                "Content Creation Flow",
+              );
+              logAction(
+                "投稿案を生成",
+                `${selectedApproval.title} の投稿案をAI Creative Briefとして生成。`,
+                "Content Creation Flow",
+              );
+            }}
+            onDraftSaved={() =>
+              logAction(
+                "Instagram draft prepared",
+                instagram.connectionStatus === "connected"
+                  ? "Instagram Draft Ready。実投稿は行わず、下書き連携準備のみ完了。"
+                  : "Instagram未接続です。TOMOS内の下書きとして保存しました。",
+                "Content Creation Flow",
+              )
+            }
+          />
         ) : null;
       case "brands":
         return (

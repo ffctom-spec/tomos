@@ -203,6 +203,51 @@ export type AiReviewResponse = {
   nextActions: string[];
 };
 
+export type CreativeBriefRequest = {
+  topic: string;
+  context: string;
+  objective: string;
+  tone: string;
+  channel: string;
+  postType: string;
+  structure: string;
+  asset: string;
+  brand: string;
+};
+
+export type CreativeBriefResponse = {
+  mode: "live" | "mock";
+  model: string;
+  demandHypothesis: {
+    reasons: string[];
+    audience: string;
+    saveReason: string;
+    opportunityScore: number;
+    disclaimer: string;
+  };
+  concept: {
+    summary: string;
+    conclusion: string;
+    visualDirection: string;
+    carouselPlan: string[];
+    reelHook: string;
+  };
+  titleOptions: string[];
+  leadOptions: string[];
+  finalPost: {
+    title: string;
+    lead: string;
+    body: string;
+    cta: string;
+    hashtags: string[];
+    productPath: string;
+    aioFaq: string[];
+    instagramCaption: string;
+    channelFormat: string;
+  };
+  aiComment: string;
+};
+
 export type ReviewReference = {
   id: string;
   title: string;

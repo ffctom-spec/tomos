@@ -19,6 +19,8 @@ import {
 import type {
   AiReviewRequest,
   AiReviewResponse,
+  CreativeBriefRequest,
+  CreativeBriefResponse,
   InstagramAnalytics,
   IntegrationApiResponse,
   IntegrationStatus,
@@ -96,6 +98,24 @@ export async function reviewContentWithAI(
   }
 
   return response.json() as Promise<AiReviewResponse>;
+}
+
+export async function generateCreativeBrief(
+  payload: CreativeBriefRequest,
+): Promise<CreativeBriefResponse> {
+  const response = await fetch("/api/ai/generate", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error("Creative brief generation failed");
+  }
+
+  return response.json() as Promise<CreativeBriefResponse>;
 }
 
 export async function getInstagramAnalytics(): Promise<InstagramAnalytics> {
