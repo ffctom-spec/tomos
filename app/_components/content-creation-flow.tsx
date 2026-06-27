@@ -29,6 +29,30 @@ type SeriesOpportunity = {
   score: number;
 };
 
+type DistributionPlan = {
+  primaryFormat: string;
+  order: string[];
+  reason: string;
+  expectedActions: Array<{ format: string; action: string }>;
+  caution: string;
+  rollout: Array<{
+    day: string;
+    format: string;
+    theme: string;
+    objective: string;
+    detail: string;
+    hook: string;
+  }>;
+  recognition: {
+    current: string;
+    phase: string;
+    nextGoal: string;
+    priorityThemes: string[];
+  };
+  conversationStarters: string[];
+  confidence: "Low" | "Medium" | "High";
+};
+
 const channels = ["Instagram", "YouTube", "Threads"] as const;
 const postTypes = ["Carousel", "Reel", "Photo post"] as const;
 const structures = ["保存版ガイド", "Before / After", "3つのポイント", "FAQ型"] as const;
@@ -76,18 +100,24 @@ export function ContentCreationFlow({
   onBack,
   onCreativeBriefGenerated,
   onDraftSaved,
+  onDistributionPlanCreated,
   onPhotoAssetSelected,
   onPostSimulationGenerated,
+  onSeriesRolloutPlanned,
   onSeriesOpportunityAdded,
+  onConversationStarterSelected,
 }: {
   approval?: ApprovalItem;
   instagramConnected?: boolean;
   onBack?: () => void;
   onCreativeBriefGenerated?: () => void;
   onDraftSaved?: () => void;
+  onDistributionPlanCreated?: () => void;
   onPhotoAssetSelected?: (fileName: string) => void;
   onPostSimulationGenerated?: () => void;
+  onSeriesRolloutPlanned?: () => void;
   onSeriesOpportunityAdded?: (title: string) => void;
+  onConversationStarterSelected?: (starter: string) => void;
 }) {
   const [step, setStep] = useState<FlowStep>(1);
   const [channel, setChannel] = useState<(typeof channels)[number]>("Instagram");
@@ -109,6 +139,8 @@ export function ContentCreationFlow({
   const [saved, setSaved] = useState(false);
   const [uploadedAsset, setUploadedAsset] = useState<UploadedAsset | null>(null);
   const [addedSeriesTitle, setAddedSeriesTitle] = useState("");
+  const [addedConversationStarter, setAddedConversationStarter] = useState("");
+  const [baselineReach, setBaselineReach] = useState("500");
   const [variantIndex, setVariantIndex] = useState(0);
 
   useEffect(() => {
@@ -127,6 +159,21 @@ export function ContentCreationFlow({
         structure,
       }),
     [asset, postType, structure, uploadedAsset],
+  );
+
+  const distributionPlan = useMemo(
+    () =>
+      getDistributionPlan({
+        audience,
+        hasImage: Boolean(uploadedAsset) || asset !== "後で選ぶ",
+        objective,
+        postType,
+        structure,
+        title: selectedTitle || topic,
+        tone,
+        topic,
+      }),
+    [asset, audience, objective, postType, selectedTitle, structure, tone, topic, uploadedAsset],
   );
 
   const stepLabel = useMemo(() => {
@@ -187,6 +234,8 @@ export function ContentCreationFlow({
       setStep(6);
       onCreativeBriefGenerated?.();
       onPostSimulationGenerated?.();
+      onDistributionPlanCreated?.();
+      onSeriesRolloutPlanned?.();
     } catch {
       setGenerationError("投稿案の生成に失敗しました。もう一度試してください。");
     } finally {
@@ -254,6 +303,12 @@ export function ContentCreationFlow({
   function addSeriesOpportunity(title: string) {
     setAddedSeriesTitle(title);
     onSeriesOpportunityAdded?.(title);
+  }
+
+  function addConversationStarter(starter: string) {
+    setAddedConversationStarter(starter);
+    setEditableBody((current) => `${current}\n\n${starter}`);
+    onConversationStarterSelected?.(starter);
   }
 
   return (
@@ -384,14 +439,19 @@ export function ContentCreationFlow({
             selectedTitle={selectedTitle}
             seriesOpportunities={getSeriesOpportunities(topic, structure)}
             simulation={simulation}
+            baselineReach={baselineReach}
+            distributionPlan={distributionPlan}
             structure={structure}
             onAdjust={() => setStep(5)}
             onAddSeries={addSeriesOpportunity}
             onAngleAdopt={adoptCreativeAngle}
             onBodyChange={setEditableBody}
+            onBaselineReachChange={setBaselineReach}
+            onConversationStarterSelect={addConversationStarter}
             onRegenerate={generateLocalVariant}
             onSave={saveDraft}
             onTitleSelect={setSelectedTitle}
+            addedConversationStarter={addedConversationStarter}
           />
       ) : null}
 
@@ -499,6 +559,164 @@ function getSeriesOpportunities(
       intent: "AIOと保存導線を作る",
       score: 82,
     },
+  ];
+}
+
+function getDistributionPlan({
+  audience,
+  hasImage,
+  objective,
+  postType,
+  structure,
+  title,
+  tone,
+  topic,
+}: {
+  audience: string;
+  hasImage: boolean;
+  objective: string;
+  postType: string;
+  structure: string;
+  title: string;
+  tone: string;
+  topic: string;
+}): DistributionPlan {
+  const saveFocused = objective.includes("保存") || structure === "保存版ガイド" || structure === "FAQ型";
+  const awarenessFocused = objective.includes("認知");
+  const productFocused = objective.includes("商品");
+  const conversationFocused = objective.includes("問い合わせ") || audience.includes("ライフスタイル");
+  const weakMaterial = !hasImage;
+  const primaryFormat = weakMaterial || saveFocused || productFocused
+    ? "Carousel Feed"
+    : awarenessFocused && hasImage
+      ? "Reel"
+      : conversationFocused
+        ? "Story"
+        : postType === "Reel"
+          ? "Reel"
+          : "Carousel Feed";
+  const order = productFocused
+    ? ["Carousel Feed", "Story", "Reel"]
+    : primaryFormat === "Reel"
+      ? ["Reel", "Story", "Carousel Feed"]
+      : primaryFormat === "Story"
+        ? ["Story", "Carousel Feed", "Reel"]
+        : ["Carousel Feed", "Story", "Reel"];
+
+  return {
+    primaryFormat,
+    order,
+    reason:
+      primaryFormat === "Reel"
+        ? "短い動画で興味を作り、その後Storyで反応を集め、Carouselで保存される知識に変える流れと相性が良いというAI運用仮説です。"
+        : primaryFormat === "Story"
+          ? "まず既存フォロワーの反応を集め、会話から保存型投稿へ展開する流れが向くというAI運用仮説です。"
+          : "説明性と保存性が重要なテーマのため、Carousel Feedで知識として残し、Storyで会話を作る流れが向くというAI運用仮説です。",
+    expectedActions: [
+      { format: "Reel", action: "新規リーチ" },
+      { format: "Story", action: "投票・返信・会話" },
+      { format: "Carousel Feed", action: "保存・再訪・信頼" },
+    ],
+    caution:
+      "画像や動画が弱い場合は、ReelよりCarouselを優先する提案に切り替えてください。",
+    rollout: [
+      {
+        day: "Day 1",
+        format: primaryFormat === "Reel" ? "Reel" : "Carousel Feed",
+        theme: title,
+        objective: primaryFormat === "Reel" ? "新規リーチを作る" : "保存される知識にする",
+        detail: primaryFormat === "Reel" ? "12〜18秒" : "5ページ",
+        hook: `肥料を買う前に、${topic}を見直してください。`,
+      },
+      {
+        day: "Day 2",
+        format: "Story",
+        theme: `${topic}、試したことありますか？`,
+        objective: "投票・返信を集める",
+        detail: "Poll / Question Sticker",
+        hook: "やったことある / まだない",
+      },
+      {
+        day: "Day 4",
+        format: "Carousel Feed",
+        theme: topic.includes("土") ? "腐葉土・堆肥・培養土。役割の違い" : `${topic}の比較ポイント`,
+        objective: "保存される知識にする",
+        detail: "5ページ",
+        hook: "違いが分かると、選び方が変わります。",
+      },
+      {
+        day: "Day 6",
+        format: "Story",
+        theme: "次に見たいテーマ",
+        objective: "シリーズの方向を確認",
+        detail: "投票",
+        hook: "次はどちらを見たいですか？",
+      },
+      {
+        day: "Day 7",
+        format: "Reel",
+        theme: tone.includes("ブランド") ? "ブランドの思想を短く見せる" : `植物を増やす前に、${topic}を見直す`,
+        objective: "シリーズの世界観を定着させる",
+        detail: "Reel",
+        hook: "まず育てるべきは、植物だけではありません。",
+      },
+    ],
+    recognition: {
+      current: "1 / 6 投稿",
+      phase: "テーマの発見",
+      nextGoal: `あと2本で「${topic}シリーズ」の認知を作る`,
+      priorityThemes: [
+        topic.includes("土") ? "土が固くなる原因3つ" : `${topic}で失敗しやすい原因3つ`,
+        topic.includes("土") ? "腐葉土・堆肥・培養土の違い" : `${topic}の比較投稿`,
+        "2週間後のBefore / After",
+      ],
+    },
+    conversationStarters: [
+      `${topic}、試したことありますか？`,
+      "庭や鉢で試している0円アイデアがあれば教えてください。",
+      topic.includes("土")
+        ? "次は“腐葉土・堆肥・培養土の違い”を見たいですか？"
+        : `次は“${topic}の比較”を見たいですか？`,
+    ],
+    confidence: weakMaterial ? "Medium" : primaryFormat === "Reel" ? "Medium" : "High",
+  };
+}
+
+function getBaselinePerformance({
+  baselineReach,
+  distributionPlan,
+  simulation,
+}: {
+  baselineReach: string;
+  distributionPlan: DistributionPlan;
+  simulation: PostSimulation;
+}) {
+  const baseline = Math.max(100, Number.parseInt(baselineReach, 10) || 500);
+  const formatMultiplier =
+    distributionPlan.primaryFormat === "Reel"
+      ? 1.45
+      : distributionPlan.primaryFormat === "Story"
+        ? 0.85
+        : 1.22;
+  const scoreMultiplier = simulation.total / 100;
+  const lowReach = Math.round(baseline * formatMultiplier * (0.9 + scoreMultiplier * 0.25));
+  const highReach = Math.round(baseline * formatMultiplier * (1.25 + scoreMultiplier * 0.35));
+  const savesLow = Math.round(lowReach * (distributionPlan.primaryFormat === "Carousel Feed" ? 0.038 : 0.02));
+  const savesHigh = Math.round(highReach * (distributionPlan.primaryFormat === "Carousel Feed" ? 0.055 : 0.032));
+  const profileLow = Math.round(lowReach * 0.018);
+  const profileHigh = Math.round(highReach * 0.034);
+  const commentsLow = Math.max(2, Math.round(lowReach * 0.006));
+  const commentsHigh = Math.max(5, Math.round(highReach * 0.014));
+  const clicksLow = Math.max(2, Math.round(lowReach * 0.007));
+  const clicksHigh = Math.max(4, Math.round(highReach * 0.018));
+
+  return [
+    { label: "推定リーチ", value: `${lowReach.toLocaleString()}〜${highReach.toLocaleString()}` },
+    { label: "推定保存数", value: `${savesLow}〜${savesHigh}` },
+    { label: "推定プロフィール遷移", value: `${profileLow}〜${profileHigh}` },
+    { label: "推定コメント・返信", value: `${commentsLow}〜${commentsHigh}` },
+    { label: "推定商品導線クリック", value: `${clicksLow}〜${clicksHigh}` },
+    { label: "Confidence", value: distributionPlan.confidence },
   ];
 }
 
@@ -799,9 +1017,12 @@ function PostSimulationPanel({ simulation }: { simulation: PostSimulation }) {
 
 function PublishReviewCard({
   addedSeriesTitle,
+  addedConversationStarter,
   asset,
+  baselineReach,
   brief,
   channel,
+  distributionPlan,
   editableBody,
   uploadedAsset,
   instagramConnected,
@@ -816,15 +1037,20 @@ function PublishReviewCard({
   onAdjust,
   onAddSeries,
   onAngleAdopt,
+  onBaselineReachChange,
   onBodyChange,
+  onConversationStarterSelect,
   onRegenerate,
   onSave,
   onTitleSelect,
 }: {
   addedSeriesTitle: string;
+  addedConversationStarter: string;
   asset: string;
+  baselineReach: string;
   brief: CreativeBriefResponse;
   channel: string;
+  distributionPlan: DistributionPlan;
   editableBody: string;
   uploadedAsset: UploadedAsset | null;
   instagramConnected: boolean;
@@ -839,7 +1065,9 @@ function PublishReviewCard({
   onAdjust: () => void;
   onAddSeries: (title: string) => void;
   onAngleAdopt: (angle: CreativeBriefResponse["creativeAngles"][number]) => void;
+  onBaselineReachChange: (value: string) => void;
   onBodyChange: (value: string) => void;
+  onConversationStarterSelect: (value: string) => void;
   onRegenerate: () => void;
   onSave: () => void;
   onTitleSelect: (value: string) => void;
@@ -861,6 +1089,8 @@ function PublishReviewCard({
           selectedTitle={selectedTitle}
           uploadedAsset={uploadedAsset}
         />
+
+        <DistributionDirectorCard distributionPlan={distributionPlan} />
 
         <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
           Publish Review
@@ -1023,6 +1253,25 @@ function PublishReviewCard({
       </GlassCard>
 
       <GlassCard>
+        <div className="grid gap-3 md:hidden">
+          <MetricCard
+            label="最優先フォーマット"
+            value={distributionPlan.primaryFormat}
+          />
+          <MetricCard
+            label="推奨配信順"
+            value={distributionPlan.order.join(" → ")}
+          />
+          <MetricCard
+            label="7日間の最初のアクション"
+            value={`${distributionPlan.rollout[0]?.day} / ${distributionPlan.rollout[0]?.format}`}
+          />
+          <MetricCard
+            label="Topic Recognition"
+            value={distributionPlan.recognition.current}
+          />
+        </div>
+
         <div className="grid gap-3">
           {[
             ["投稿先", channel],
@@ -1044,22 +1293,46 @@ function PublishReviewCard({
 
         <div className="mt-5 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
           <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-            Post Simulator
+            AI推定パフォーマンス
+          </p>
+          <label className="mt-4 grid gap-2 text-sm">
+            通常投稿の平均リーチ
+            <input
+              className="min-h-12 rounded-2xl border border-white/10 bg-black/40 px-4 text-white outline-none focus:border-white/30"
+              inputMode="numeric"
+              onChange={(event) => onBaselineReachChange(event.target.value)}
+              value={baselineReach}
+            />
+          </label>
+          <p className="mt-2 text-xs text-zinc-500">
+            Instagram未接続時は仮想ベースライン 500 を初期表示。
           </p>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <MetricCard label="AI Command" value={`${simulation.total} / 100`} />
             <MetricCard
-              label="保存見込み"
-              value={
-                simulation.scores.find((score) => score.label === "Save Potential")
-                  ?.value.toString() ?? "0"
-              }
+              label="最優先形式"
+              value={distributionPlan.primaryFormat}
             />
+            {getBaselinePerformance({
+              baselineReach,
+              distributionPlan,
+              simulation,
+            }).map((item) => (
+              <MetricCard key={item.label} label={item.label} value={item.value} />
+            ))}
           </div>
           <p className="mt-4 text-xs leading-5 text-zinc-500">
-            AI推定レンジ。実データやリアルタイム予測ではありません。
+            AI推定レンジ。実際の結果は、アカウント状況、投稿時間、画像品質、フォロワー反応、外部要因により変動します。
           </p>
         </div>
+
+        <RolloutAndRecognitionCard distributionPlan={distributionPlan} />
+
+        <ConversationStarterCard
+          addedConversationStarter={addedConversationStarter}
+          starters={distributionPlan.conversationStarters}
+          onSelect={onConversationStarterSelect}
+        />
 
         <div className="mt-5 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
           <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
@@ -1168,6 +1441,164 @@ function PostPreview({
         </p>
       </div>
     </div>
+  );
+}
+
+function DistributionDirectorCard({
+  distributionPlan,
+}: {
+  distributionPlan: DistributionPlan;
+}) {
+  return (
+    <div className="mb-5 rounded-[2rem] border border-white/10 bg-white/[0.04] p-5">
+      <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+        AI Distribution Director
+      </p>
+      <h3 className="mt-2 text-2xl font-semibold">AI運用仮説</h3>
+      <p className="mt-3 text-sm leading-6 text-zinc-400">
+        投稿の目的・読者・素材・構成から、AIが今回の配信順とシリーズ戦略を提案します。
+      </p>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <MetricCard
+          label="今回の最優先フォーマット"
+          value={distributionPlan.primaryFormat}
+        />
+        <MetricCard
+          label="推奨配信順"
+          value={distributionPlan.order.join(" → ")}
+        />
+      </div>
+      <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-4">
+        <p className="text-xs text-zinc-500">なぜこの順番か</p>
+        <p className="mt-2 text-sm leading-6 text-zinc-300">
+          {distributionPlan.reason}
+        </p>
+      </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        {distributionPlan.expectedActions.map((item) => (
+          <div
+            className="rounded-2xl border border-white/10 bg-black/30 p-4"
+            key={item.format}
+          >
+            <p className="text-sm font-medium">{item.format}</p>
+            <p className="mt-2 text-xs leading-5 text-zinc-500">{item.action}</p>
+          </div>
+        ))}
+      </div>
+      <p className="mt-4 text-xs leading-5 text-zinc-500">
+        注意点: {distributionPlan.caution}
+      </p>
+    </div>
+  );
+}
+
+function RolloutAndRecognitionCard({
+  distributionPlan,
+}: {
+  distributionPlan: DistributionPlan;
+}) {
+  return (
+    <div className="mt-5 grid gap-4">
+      <details className="rounded-3xl border border-white/10 bg-white/[0.04] p-5" open>
+        <summary className="cursor-pointer text-sm font-semibold">
+          7-Day Content Rollout
+        </summary>
+        <div className="mt-4 grid gap-3">
+          {distributionPlan.rollout.map((item) => (
+            <div
+              className="rounded-2xl border border-white/10 bg-black/30 p-4"
+              key={`${item.day}-${item.theme}`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold">{item.day}</p>
+                <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-400">
+                  {item.format}
+                </span>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-zinc-200">{item.theme}</p>
+              <p className="mt-2 text-xs leading-5 text-zinc-500">
+                目的: {item.objective} / 形式: {item.detail}
+              </p>
+              <p className="mt-2 text-xs leading-5 text-zinc-400">
+                冒頭3秒: {item.hook}
+              </p>
+            </div>
+          ))}
+        </div>
+      </details>
+
+      <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+        <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+          Topic Recognition Plan
+        </p>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <MetricCard
+            label="現在のシリーズ進行数"
+            value={distributionPlan.recognition.current}
+          />
+          <MetricCard
+            label="認知フェーズ"
+            value={distributionPlan.recognition.phase}
+          />
+        </div>
+        <p className="mt-4 text-sm leading-6 text-zinc-300">
+          {distributionPlan.recognition.nextGoal}
+        </p>
+        <div className="mt-3 grid gap-2">
+          {distributionPlan.recognition.priorityThemes.map((theme) => (
+            <p
+              className="rounded-2xl border border-white/10 bg-black/30 p-3 text-xs leading-5 text-zinc-400"
+              key={theme}
+            >
+              {theme}
+            </p>
+          ))}
+        </div>
+        <p className="mt-4 text-xs leading-5 text-zinc-500">
+          投稿本数はAI運用仮説です。実際の認知・リーチは、アカウント状況、投稿品質、投稿時間、反応などにより変動します。
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ConversationStarterCard({
+  addedConversationStarter,
+  starters,
+  onSelect,
+}: {
+  addedConversationStarter: string;
+  starters: string[];
+  onSelect: (value: string) => void;
+}) {
+  return (
+    <details className="mt-5 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+      <summary className="cursor-pointer text-sm font-semibold">
+        Conversation Starter
+      </summary>
+      <div className="mt-4 grid gap-3">
+        {starters.map((starter) => (
+          <div
+            className="rounded-2xl border border-white/10 bg-black/30 p-4"
+            key={starter}
+          >
+            <p className="text-sm leading-6 text-zinc-300">{starter}</p>
+            <button
+              className="mt-3 min-h-11 w-full rounded-full border border-white/10 px-4 text-sm text-zinc-200 transition hover:bg-white/10"
+              onClick={() => onSelect(starter)}
+              type="button"
+            >
+              投稿文に追加
+            </button>
+          </div>
+        ))}
+      </div>
+      {addedConversationStarter ? (
+        <p className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-4 text-sm text-emerald-100">
+          投稿文に追加しました: {addedConversationStarter}
+        </p>
+      ) : null}
+    </details>
   );
 }
 

@@ -363,6 +363,13 @@ export function PortalShell() {
                 "Content Creation Flow",
               )
             }
+            onDistributionPlanCreated={() =>
+              logAction(
+                "AI distribution plan created",
+                "配信順、最優先フォーマット、期待行動をAI運用仮説として生成。",
+                "Content Creation Flow",
+              )
+            }
             onPostSimulationGenerated={() =>
               logAction(
                 "AI post simulation generated",
@@ -370,10 +377,24 @@ export function PortalShell() {
                 "Content Creation Flow",
               )
             }
+            onSeriesRolloutPlanned={() =>
+              logAction(
+                "Series rollout planned",
+                "7-Day Content RolloutとTopic Recognition Planを生成。",
+                "Content Creation Flow",
+              )
+            }
             onSeriesOpportunityAdded={(title) =>
               logAction(
                 "Series opportunity added",
                 `${title} を次の投稿候補として追加。`,
+                "Content Creation Flow",
+              )
+            }
+            onConversationStarterSelected={(starter) =>
+              logAction(
+                "Conversation starter selected",
+                `${starter} を投稿文に追加。`,
                 "Content Creation Flow",
               )
             }
