@@ -99,6 +99,14 @@ export function ContentCreationFlow({
     setStep((current) => Math.min(current + 1, 6) as FlowStep);
   }
 
+  function selectAndContinue<T extends string>(
+    value: T,
+    setter: (nextValue: T) => void,
+  ) {
+    setter(value);
+    goNext();
+  }
+
   function goPrevious() {
     if (step === 1) {
       onBack?.();
@@ -157,28 +165,28 @@ export function ContentCreationFlow({
               <OptionGrid
                 current={channel}
                 items={channels}
-                onSelect={(value) => setChannel(value)}
+                onSelect={(value) => selectAndContinue(value, setChannel)}
               />
             ) : null}
             {step === 2 ? (
               <OptionGrid
                 current={postType}
                 items={postTypes}
-                onSelect={(value) => setPostType(value)}
+                onSelect={(value) => selectAndContinue(value, setPostType)}
               />
             ) : null}
             {step === 3 ? (
               <OptionGrid
                 current={structure}
                 items={structures}
-                onSelect={(value) => setStructure(value)}
+                onSelect={(value) => selectAndContinue(value, setStructure)}
               />
             ) : null}
             {step === 4 ? (
               <OptionGrid
                 current={asset}
                 items={assets}
-                onSelect={(value) => setAsset(value)}
+                onSelect={(value) => selectAndContinue(value, setAsset)}
               />
             ) : null}
             {step === 5 ? (
