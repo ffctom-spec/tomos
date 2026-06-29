@@ -65,6 +65,18 @@ type PriorityDecision = {
   calendarSlot: string;
 };
 
+type ProductRankItem = {
+  id: string;
+  name: string;
+  channel: string;
+  revenue: string;
+  margin: string;
+  yesterday: string;
+  week: string;
+  rankMove: string;
+  aiScore: number;
+};
+
 const origins: OriginNode[] = [
   {
     id: "california",
@@ -209,6 +221,28 @@ const priorityDecisions: PriorityDecision[] = [
   },
 ];
 
+const productRanking: ProductRankItem[] = Array.from({ length: 20 }).map((_, index) => {
+  const names = [
+    "ドライガーデン用培養土",
+    "ロストラータ向け鉢",
+    "ガーデンライト",
+    "アガベ管理PDF",
+    "ガビオン素材",
+  ];
+
+  return {
+    id: `product-${index + 1}`,
+    name: names[index % names.length] ?? "Garden Product",
+    channel: ["BASE", "Amazon", "Yahoo!ショッピング", "STORES"][index % 4] ?? "BASE",
+    revenue: `¥${(128400 - index * 4200).toLocaleString()}`,
+    margin: `${38 - (index % 7)}%`,
+    yesterday: `${index % 3 === 0 ? "+" : "-"}¥${(800 + index * 120).toLocaleString()}`,
+    week: `+¥${(6200 + index * 700).toLocaleString()}`,
+    rankMove: index % 4 === 0 ? "↑2" : index % 5 === 0 ? "↓1" : "→",
+    aiScore: 92 - index,
+  };
+});
+
 export function CommandCenter({
   approvals,
   brief,
@@ -226,8 +260,9 @@ export function CommandCenter({
   const [controls, setControls] = useState<CockpitControls>(initialControls);
   const [selectedOriginId, setSelectedOriginId] = useState("california");
   const [selectedStep, setSelectedStep] = useState(0);
-  const [briefLevel, setBriefLevel] = useState<"cockpit" | "decisions" | "detail">("cockpit");
+  const [briefLevel, setBriefLevel] = useState<"cockpit" | "decisions" | "detail" | "commerce" | "product-detail">("cockpit");
   const [selectedDecisionId, setSelectedDecisionId] = useState(priorityDecisions[0]?.id ?? "");
+  const [selectedProductId, setSelectedProductId] = useState(productRanking[0]?.id ?? "");
   const [selectedCalendarSlot, setSelectedCalendarSlot] = useState("10:00-11:00");
   const [selectedSlotTask, setSelectedSlotTask] = useState("Instagram Carousel最終確認");
 
@@ -278,6 +313,33 @@ export function CommandCenter({
         onReviewProduct={() => onNavigate("product")}
       />
     );
+  }
+
+  if (briefLevel === "commerce") {
+    return (
+      <CommerceIntelligenceDeck
+        products={productRanking}
+        onBack={() => setBriefLevel("cockpit")}
+        onOpenOpportunity={() => onNavigate("product")}
+        onProduct={(id) => {
+          setSelectedProductId(id);
+          setBriefLevel("product-detail");
+        }}
+      />
+    );
+  }
+
+  if (briefLevel === "product-detail") {
+    const product = productRanking.find((item) => item.id === selectedProductId) ?? productRanking[0];
+
+    return product ? (
+      <ProductDetailDeck
+        product={product}
+        onBack={() => setBriefLevel("commerce")}
+        onCreateContent={() => onNavigate("broadcast")}
+        onOpportunity={() => onNavigate("product")}
+      />
+    ) : null;
   }
 
   return (
@@ -393,6 +455,18 @@ export function CommandCenter({
           </div>
           <div className="xl:col-span-4">
             <WeatherOpsPanel />
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 xl:grid-cols-12">
+          <div className="xl:col-span-4">
+            <PortfolioSnapshot onOpen={() => onNavigate("brands")} />
+          </div>
+          <div className="xl:col-span-5">
+            <CommerceSnapshot onOpen={() => setBriefLevel("commerce")} />
+          </div>
+          <div className="xl:col-span-3">
+            <MarketRadarSnapshot onOpen={() => onNavigate("broadcast")} />
           </div>
         </div>
       </section>
@@ -1128,6 +1202,231 @@ function WeatherOpsPanel() {
       <p className="mt-3 text-[10px] uppercase tracking-[0.18em] text-zinc-600">
         Weather Integration Not Connected
       </p>
+    </section>
+  );
+}
+
+function PortfolioSnapshot({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button
+      className="border border-white/[0.14] bg-[#050505] p-5 text-left hover:border-white/40"
+      onClick={onOpen}
+      type="button"
+    >
+      <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
+        BRAND PORTFOLIO
+      </p>
+      <p className="mt-4 text-4xl font-semibold">86</p>
+      <p className="mt-2 text-sm text-zinc-500">Brand Score / Mock Portfolio Data</p>
+      <div className="mt-4 grid gap-2">
+        <PulseBlock label="Revenue" value="¥128,400 / +0.8%" />
+        <PulseBlock label="Next Action" value="VERDNA Carouselを商品導線へ接続" />
+      </div>
+    </button>
+  );
+}
+
+function CommerceSnapshot({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button
+      className="border border-white/[0.14] bg-[#050505] p-5 text-left hover:border-white/40"
+      onClick={onOpen}
+      type="button"
+    >
+      <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
+        COMMERCE INTELLIGENCE
+      </p>
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <MetricPanel label="Sales" note="+16.5% week" value="¥128k" />
+        <MetricPanel label="Orders" note="Mock" value="42" />
+        <MetricPanel label="CVR" note="Estimate" value="2.8%" />
+      </div>
+      <p className="mt-4 text-xs uppercase tracking-[0.18em] text-zinc-600">
+        Open Shop Registry / Product Ranking
+      </p>
+    </button>
+  );
+}
+
+function MarketRadarSnapshot({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button
+      className="border border-white/[0.14] bg-[#050505] p-5 text-left hover:border-white/40"
+      onClick={onOpen}
+      type="button"
+    >
+      <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
+        MARKET RADAR
+      </p>
+      <p className="mt-4 text-xl font-semibold">Dry Garden Signal</p>
+      <p className="mt-2 text-sm leading-6 text-zinc-500">
+        Audience Scenario / Not live analytics
+      </p>
+      <p className="mt-4 text-xs uppercase tracking-[0.18em] text-zinc-600">
+        Create Content
+      </p>
+    </button>
+  );
+}
+
+function CommerceIntelligenceDeck({
+  onBack,
+  onOpenOpportunity,
+  onProduct,
+  products,
+}: {
+  onBack: () => void;
+  onOpenOpportunity: () => void;
+  onProduct: (id: string) => void;
+  products: ProductRankItem[];
+}) {
+  const [shopName, setShopName] = useState("VERDNA Mock Store");
+  const [platform, setPlatform] = useState("BASE");
+  const [storeUrl, setStoreUrl] = useState("https://example.com/verdan-store");
+  const [saved, setSaved] = useState(false);
+
+  return (
+    <section className="border border-white/[0.14] bg-[#030303]/90 p-5 sm:p-8">
+      <div className="mb-8 flex items-start justify-between gap-4 border-b border-white/10 pb-6">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.26em] text-zinc-500">
+            06 / COMMERCE INTELLIGENCE
+          </p>
+          <h1 className="mt-4 text-5xl font-semibold tracking-tight">
+            Shop Registry / Product Ranking
+          </h1>
+          <p className="mt-3 text-sm text-zinc-500">
+            Mock / Setup Required / TOMOS AI Estimate
+          </p>
+        </div>
+        <button className="min-h-11 border border-white/15 px-4 text-sm" onClick={onBack} type="button">
+          Back
+        </button>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
+        <div className="border border-white/10 bg-black/35 p-5">
+          <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+            Shop Registry
+          </p>
+          <label className="mt-4 grid gap-2 text-sm">
+            Platform
+            <select className="min-h-12 border border-white/10 bg-black px-3" onChange={(event) => setPlatform(event.target.value)} value={platform}>
+              {["Amazon", "Yahoo!ショッピング", "BASE", "STORES", "Creema", "Other"].map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+          </label>
+          <label className="mt-3 grid gap-2 text-sm">
+            Shop Name
+            <input className="min-h-12 border border-white/10 bg-black px-3" onChange={(event) => setShopName(event.target.value)} value={shopName} />
+          </label>
+          <label className="mt-3 grid gap-2 text-sm">
+            Store URL
+            <input className="min-h-12 border border-white/10 bg-black px-3" onChange={(event) => setStoreUrl(event.target.value)} value={storeUrl} />
+          </label>
+          <button className="mt-4 min-h-12 w-full bg-white px-4 text-sm font-medium text-black" onClick={() => setSaved(true)} type="button">
+            Save Mock Shop
+          </button>
+          {saved ? (
+            <p className="mt-3 border border-white/10 bg-white/10 p-3 text-sm">
+              Saved: {platform} / {shopName}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="border border-white/10 bg-black/35 p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+              Product Performance Ranking
+            </p>
+            <button className="border border-white/15 px-3 py-2 text-xs" onClick={onOpenOpportunity} type="button">
+              Product Opportunity
+            </button>
+          </div>
+          <div className="grid gap-2">
+            {products.map((product, index) => (
+              <button
+                className="grid gap-2 border border-white/10 bg-black/35 p-3 text-left hover:border-white/35 md:grid-cols-[48px_1fr_100px_80px_80px]"
+                key={product.id}
+                onClick={() => onProduct(product.id)}
+                type="button"
+              >
+                <p className="text-sm text-zinc-500">#{index + 1}</p>
+                <div>
+                  <p className="text-sm font-semibold">{product.name}</p>
+                  <p className="mt-1 text-xs text-zinc-500">{product.channel} / {product.rankMove}</p>
+                </div>
+                <p className="text-sm">{product.revenue}</p>
+                <p className="text-sm text-zinc-400">{product.margin}</p>
+                <p className="text-sm">AI {product.aiScore}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProductDetailDeck({
+  onBack,
+  onCreateContent,
+  onOpportunity,
+  product,
+}: {
+  onBack: () => void;
+  onCreateContent: () => void;
+  onOpportunity: () => void;
+  product: ProductRankItem;
+}) {
+  return (
+    <section className="border border-white/[0.14] bg-[#030303]/90 p-5 sm:p-8">
+      <div className="mb-8 flex items-start justify-between gap-4 border-b border-white/10 pb-6">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.26em] text-zinc-500">
+            PRODUCT DETAIL / Scenario only
+          </p>
+          <h1 className="mt-4 text-5xl font-semibold tracking-tight">{product.name}</h1>
+        </div>
+        <button className="min-h-11 border border-white/15 px-4 text-sm" onClick={onBack} type="button">
+          Back
+        </button>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+        <div className="grid gap-3 md:grid-cols-3">
+          <MetricPanel label="Revenue" note={product.week} value={product.revenue} />
+          <MetricPanel label="Margin" note="Mock" value={product.margin} />
+          <MetricPanel label="AI Score" note={product.rankMove} value={product.aiScore} />
+          {Array.from({ length: 20 }).map((_, index) => (
+            <div className="border border-white/10 bg-black/35 p-3" key={index}>
+              <p className="text-xs text-zinc-500">{String(index + 1).padStart(2, "0")}:00</p>
+              <div className="mt-3 h-px bg-white/10">
+                <div className="h-px bg-white" style={{ width: `${30 + ((index * 13) % 65)}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="border border-white/10 bg-black/35 p-5">
+          <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+            AI Next Actions
+          </p>
+          <div className="mt-4 grid gap-2">
+            <button className="min-h-12 bg-white px-4 text-sm font-medium text-black" onClick={onCreateContent} type="button">
+              商品紹介Carouselを作る
+            </button>
+            <button className="min-h-12 border border-white/15 px-4 text-sm" onClick={onCreateContent} type="button">
+              YouTube Short案を作る
+            </button>
+            <button className="min-h-12 border border-white/15 px-4 text-sm" onClick={onOpportunity} type="button">
+              Product Opportunityを確認する
+            </button>
+          </div>
+          <p className="mt-4 text-xs leading-5 text-zinc-500">
+            実際の仕入れ・販売前に、規約・真贋・在庫・送料・税金・知的財産を確認してください。
+          </p>
+        </div>
+      </div>
     </section>
   );
 }
