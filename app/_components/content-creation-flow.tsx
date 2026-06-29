@@ -23,6 +23,17 @@ type PostSimulation = {
   performance: Array<{ label: string; value: string }>;
 };
 
+type PublishReadiness = {
+  score: number;
+  goal: number;
+  judgment: string;
+  gap: number;
+  weakness: string;
+  nextMove: string;
+  movements: Array<{ value: number; title: string; detail: string }>;
+  consistencyWarning?: string;
+};
+
 type SeriesOpportunity = {
   title: string;
   format: string;
@@ -58,9 +69,14 @@ const channels = ["Instagram", "YouTube", "Threads"] as const;
 const postTypes = ["Carousel", "Reel", "Photo post"] as const;
 const structures = ["保存版ガイド", "Before / After", "3つのポイント", "FAQ型"] as const;
 const assets = ["AI推奨アセット", "ブランド写真 01", "商品・施工写真 02", "後で選ぶ"] as const;
-const objectives = ["保存を増やす", "認知を広げる", "信頼をつくる", "商品導線をつくる", "問い合わせを増やす"] as const;
-const audiences = ["家庭菜園の初心者", "庭づくりを始めた人", "ドライガーデン好き", "植物を元気にしたい人", "ライフスタイル・循環に関心がある人"] as const;
-const tones = ["専門的で信頼感", "親しみやすく実践的", "カリフォルニアモダン", "上質でブランド感", "ナチュラルで暮らし寄り"] as const;
+const objectives = ["テスト投稿", "保存を狙う", "認知を広げる", "信頼をつくる", "商品導線", "問い合わせ・DM", "音コンテンツ導線"] as const;
+const audiences = ["家庭菜園初心者", "園芸・植物好き", "アガベ・ドライガーデン好き", "おしゃれな暮らし層", "実用重視の生活者", "商品を比較検討している人"] as const;
+const journeyStages = ["認知", "興味", "比較検討", "購入・問い合わせ", "再訪・ファン化"] as const;
+const tones = ["やさしく分かりやすい", "専門的だけど親切", "ライフスタイル寄り", "実用型", "高級感・ブランド感"] as const;
+const logicalTriggers = ["3つの条件", "チェックリスト", "Before / After", "失敗しないための注意点", "比較・違い", "0円・コスト削減", "時短・すぐ試せる", "専門家・経験者の知見", "よくある質問", "意外性のある事実", "暮らしの習慣", "商品の使い方"] as const;
+const evidenceOptions = ["実写写真", "動画", "Before / After素材", "比較写真", "図解", "実体験", "数値・データ", "素材未設定"] as const;
+const ctaOptions = ["保存する", "コメントする", "DMで相談する", "プロフィールを見る", "商品を見る", "続編を見る", "CTAなし"] as const;
+const readinessGoals = [70, 80, 85, 90] as const;
 
 const fallbackApproval: ApprovalItem = {
   id: "demo-approval",
@@ -127,9 +143,14 @@ export function ContentCreationFlow({
   const [asset, setAsset] = useState<(typeof assets)[number]>("AI推奨アセット");
   const [topic, setTopic] = useState(approval.title);
   const [context, setContext] = useState("");
-  const [objective, setObjective] = useState<(typeof objectives)[number]>("保存を増やす");
-  const [audience, setAudience] = useState<(typeof audiences)[number]>("家庭菜園の初心者");
-  const [tone, setTone] = useState<(typeof tones)[number]>("専門的で信頼感");
+  const [objective, setObjective] = useState<(typeof objectives)[number]>("保存を狙う");
+  const [audience, setAudience] = useState<(typeof audiences)[number]>("家庭菜園初心者");
+  const [journeyStage, setJourneyStage] = useState<(typeof journeyStages)[number]>("興味");
+  const [tone, setTone] = useState<(typeof tones)[number]>("やさしく分かりやすい");
+  const [selectedTriggers, setSelectedTriggers] = useState<string[]>(["チェックリスト", "0円・コスト削減"]);
+  const [evidence, setEvidence] = useState<(typeof evidenceOptions)[number]>("素材未設定");
+  const [cta, setCta] = useState<(typeof ctaOptions)[number]>("保存する");
+  const [readinessGoal, setReadinessGoal] = useState<(typeof readinessGoals)[number]>(85);
   const [isGenerating, setIsGenerating] = useState(false);
   const [contextAnalyzed, setContextAnalyzed] = useState(false);
   const [generationError, setGenerationError] = useState("");
@@ -186,6 +207,24 @@ export function ContentCreationFlow({
     [asset, audience, objective, postType, selectedTitle, structure, tone, topic, uploadedAsset],
   );
 
+  const publishReadiness = useMemo(
+    () =>
+      getPublishReadiness({
+        context,
+        cta,
+        evidence,
+        goal: readinessGoal,
+        objective,
+        postType,
+        selectedTriggers,
+        structure,
+        tone,
+        topic,
+        audience,
+      }),
+    [audience, context, cta, evidence, objective, postType, readinessGoal, selectedTriggers, structure, tone, topic],
+  );
+
   const stepLabel = useMemo(() => {
     const labels: Record<FlowStep, string> = {
       1: "Channel",
@@ -230,7 +269,11 @@ export function ContentCreationFlow({
         context,
         objective,
         audience,
+        journeyStage,
         tone,
+        triggers: selectedTriggers,
+        evidence,
+        cta,
         channel,
         postType,
         structure,
@@ -439,19 +482,36 @@ export function ContentCreationFlow({
                 isGenerating={isGenerating}
                 contextAnalyzed={contextAnalyzed}
                 audience={audience}
+                cta={cta}
+                evidence={evidence}
+                journeyStage={journeyStage}
                 objective={objective}
+                readiness={publishReadiness}
+                readinessGoal={readinessGoal}
+                selectedTriggers={selectedTriggers}
                 simulation={simulation}
                 tone={tone}
                 topic={topic}
                 onBack={goPrevious}
                 onAnalyzeContext={analyzeContext}
                 onContextChange={setContext}
+                onCtaChange={setCta}
+                onEvidenceChange={setEvidence}
                 onFounderAngleAdopt={adoptFounderAngle}
                 onGenerate={generateBrief}
                 onAudienceChange={setAudience}
+                onJourneyStageChange={setJourneyStage}
                 onObjectiveChange={setObjective}
+                onReadinessGoalChange={setReadinessGoal}
                 onToneChange={setTone}
                 onTopicChange={setTopic}
+                onTriggerToggle={(trigger) =>
+                  setSelectedTriggers((current) =>
+                    current.includes(trigger)
+                      ? current.filter((item) => item !== trigger)
+                      : [...current, trigger],
+                  )
+                }
               />
             ) : null}
           </GlassCard>
@@ -508,6 +568,7 @@ export function ContentCreationFlow({
             simulation={simulation}
             baselineReach={baselineReach}
             distributionPlan={distributionPlan}
+            publishReadiness={publishReadiness}
             structure={structure}
             tone={tone}
             onAdjust={() => setStep(5)}
@@ -789,6 +850,193 @@ function getBaselinePerformance({
   ];
 }
 
+function getPublishReadiness({
+  audience,
+  context,
+  cta,
+  evidence,
+  goal,
+  objective,
+  postType,
+  selectedTriggers,
+  structure,
+  tone,
+  topic,
+}: {
+  audience: string;
+  context: string;
+  cta: string;
+  evidence: string;
+  goal: number;
+  objective: string;
+  postType: string;
+  selectedTriggers: string[];
+  structure: string;
+  tone: string;
+  topic: string;
+}): PublishReadiness {
+  let score = 60;
+  const movements: PublishReadiness["movements"] = [];
+  const add = (value: number, title: string, detail: string) => {
+    score += value;
+    movements.push({ value, title, detail });
+  };
+
+  if (objective.includes("保存") && postType === "Carousel" && structure === "保存版ガイド") {
+    add(5, "目的と投稿形式が一致", "保存狙いに対して、Carousel＋保存版ガイドが選ばれています。");
+  }
+  if (objective.includes("認知") && postType === "Reel" && evidence === "動画") {
+    add(5, "認知と動画形式が一致", "Reelと動画素材で初見リーチを狙いやすい構成です。");
+  }
+  if (objective.includes("商品") && cta === "商品を見る") {
+    add(5, "商品導線とCTAが一致", "商品導線に対して、商品を見るCTAが選ばれています。");
+  }
+  if (objective.includes("問い合わせ") && cta === "DMで相談する") {
+    add(4, "問い合わせ導線が明確", "DM CTAで次の行動が明確です。");
+  }
+  if (audience.includes("初心者") && tone === "やさしく分かりやすい") {
+    add(4, "読者と表現が一致", "初心者向けに、やさしく分かりやすい口調が選ばれています。");
+  }
+  if (audience.includes("アガベ") && tone === "専門的だけど親切") {
+    add(4, "専門読者と表現が一致", "専門テーマを親切に見せる設計です。");
+  }
+  if (audience.includes("おしゃれ") && tone === "ライフスタイル寄り") {
+    add(4, "Lifestyle文脈が一致", "暮らし層に合わせた見せ方です。");
+  }
+  if (audience.includes("比較検討") && tone === "実用型" && selectedTriggers.includes("比較・違い")) {
+    add(5, "比較検討に強い構成", "実用型＋比較トリガーで判断材料になります。");
+  }
+
+  const triggerScores: Record<string, number> = {
+    "3つの条件": 4,
+    "チェックリスト": 5,
+    "Before / After": 6,
+    "比較・違い": 5,
+    "失敗しないための注意点": 4,
+    "0円・コスト削減": 3,
+    "よくある質問": 3,
+  };
+  selectedTriggers.forEach((trigger) => {
+    const value = triggerScores[trigger] ?? 0;
+    if (value) add(value, `${trigger}がある`, "保存・理解・比較の理由になります。");
+  });
+  if (cta === "続編を見る") add(3, "シリーズ性がある", "続編導線が再訪の理由になります。");
+
+  if (evidence === "実写写真") add(4, "実写素材がある", "投稿の根拠と現実感が上がります。");
+  if (postType === "Reel" && evidence === "動画") add(5, "Reelに動画素材がある", "形式と素材が一致しています。");
+  if (evidence === "Before / After素材") add(6, "Before / After素材がある", "変化が見えるため説得力が上がります。");
+  if (selectedTriggers.includes("比較・違い") && evidence === "比較写真") {
+    add(5, "比較トリガーと素材が一致", "比較写真で判断しやすくなります。");
+  }
+  if (objective.includes("信頼") && evidence === "実体験") add(4, "実体験がある", "信頼形成の根拠になります。");
+  if (evidence === "素材未設定") add(-6, "根拠素材が不足", "実写または比較素材を追加すると説得力が上がります。");
+
+  if (objective.includes("保存") && cta === "保存する") add(4, "保存CTAが一致", "保存目的とCTAが一致しています。");
+  if (cta === "CTAなし") add(-3, "CTAなし", "読者の次の行動が弱くなります。");
+  if (objective.includes("商品") && cta === "CTAなし") add(-6, "商品導線にCTAがない", "商品を見るCTAを追加してください。");
+  if (objective.includes("保存") && !selectedTriggers.some((item) => ["チェックリスト", "3つの条件", "保存版ガイド"].includes(item))) {
+    add(-5, "保存トリガー不足", "保存される理由を強くしてください。");
+  }
+  if (postType === "Reel" && evidence !== "動画") add(-5, "Reelだが動画素材なし", "動画素材があると形式との整合が上がります。");
+
+  const consistencyWarning = getContextConsistencyWarning(topic, context);
+  if (consistencyWarning) {
+    add(-10, "Context Consistency", "投稿テーマと背景メモの文脈が一致していません。");
+  }
+  if (/必ず|確実|絶対|保証/.test(context)) {
+    add(-8, "断定表現が強い", "成果保証のように見える表現は避けてください。");
+  }
+
+  const normalizedScore = Math.max(0, Math.min(100, score));
+  const gap = Math.max(0, goal - normalizedScore);
+  const judgment =
+    normalizedScore >= 90
+      ? "HIGH CONFIDENCE"
+      : normalizedScore >= 85
+        ? "READY TO PUBLISH"
+        : normalizedScore >= 75
+          ? "IMPROVE BEFORE POSTING"
+          : "HOLD";
+  const negative = movements.find((item) => item.value < 0);
+
+  return {
+    score: normalizedScore,
+    goal,
+    judgment,
+    gap,
+    weakness: negative?.title ?? "大きな弱点はありません",
+    nextMove: negative
+      ? "根拠素材、CTA、文脈整合を先に調整してください。"
+      : "この構成で下書き保存し、投稿前に画像品質だけ確認してください。",
+    movements,
+    consistencyWarning,
+  };
+}
+
+function getContextConsistencyWarning(topic: string, context: string) {
+  const agave = /アガベ|発根|多肉|ベアルート/.test(topic);
+  const soil = /卵殻|卵|土壌|家庭菜園|土づくり/.test(context);
+  const soilTopic = /卵殻|卵|土壌|家庭菜園|土づくり/.test(topic);
+  const agaveContext = /アガベ|発根|多肉|ベアルート/.test(context);
+
+  if ((agave && soil) || (soilTopic && agaveContext)) {
+    return "注意：テーマと背景メモの文脈が一致していません。投稿テーマに合わせて、背景メモを更新してください。";
+  }
+
+  return "";
+}
+
+function PublishReadinessPanel({ readiness }: { readiness: PublishReadiness }) {
+  return (
+    <div className="mt-5 border border-white/10 bg-white/[0.04] p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+            Publish Readiness Score
+          </p>
+          <p className="mt-3 text-5xl font-semibold">{readiness.score} / 100</p>
+          <p className="mt-2 text-sm text-zinc-400">
+            Goal {readiness.goal} / {readiness.gap ? `あと${readiness.gap}点` : "目標到達"}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-semibold">{readiness.judgment}</p>
+          <p className="mt-2 text-xs uppercase tracking-[0.16em] text-zinc-500">
+            TOMOS AI Estimate / Rule-based Mock
+          </p>
+        </div>
+      </div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <MetricCard label="最大の弱点" value={readiness.weakness} />
+        <MetricCard label="AIの次の一手" value={readiness.nextMove} />
+      </div>
+      {readiness.consistencyWarning ? (
+        <p className="mt-4 border border-white/15 bg-black/40 p-4 text-sm leading-6 text-zinc-200">
+          {readiness.consistencyWarning} / -10 Context Consistency
+        </p>
+      ) : null}
+      <details className="mt-4 border border-white/10 bg-black/30 p-4">
+        <summary className="cursor-pointer text-sm text-zinc-300">
+          Score Movement
+        </summary>
+        <div className="mt-4 grid gap-2">
+          {readiness.movements.map((movement, index) => (
+            <div className="grid grid-cols-[56px_1fr] gap-3 border border-white/10 p-3" key={`${movement.title}-${index}`}>
+              <p className={movement.value >= 0 ? "text-zinc-100" : "text-zinc-500"}>
+                {movement.value > 0 ? `+${movement.value}` : movement.value}
+              </p>
+              <div>
+                <p className="text-sm font-medium">{movement.title}</p>
+                <p className="mt-1 text-xs leading-5 text-zinc-500">{movement.detail}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </details>
+    </div>
+  );
+}
+
 function isEggshellTheme(topic: string, context: string) {
   const target = `${topic} ${context}`;
   return (
@@ -943,6 +1191,8 @@ function createMockCreativeBrief({
   context,
   objective,
   audience,
+  cta,
+  evidence,
   tone,
   channel,
   postType,
@@ -954,6 +1204,10 @@ function createMockCreativeBrief({
   context: string;
   objective: string;
   audience: string;
+  journeyStage?: string;
+  triggers?: string[];
+  evidence?: string;
+  cta?: string;
   tone: string;
   channel: string;
   postType: string;
@@ -1024,11 +1278,11 @@ function createMockCreativeBrief({
     },
     creativeAngles: angles,
     concept: {
-      summary: `${title}を、${audience}が保存して試せる${postType}企画にする。`,
+      summary: `${title}を、${audience}が${cta ?? "保存する"}ための${postType}企画にする。`,
       conclusion: isEggshell
         ? "お金をかけなくても、日常の中に土づくりの入口がある。"
         : `${topic}は、まず小さく見直すことで行動につながる。`,
-      visualDirection: selectedAngle?.visualDirection ?? `${asset}を使い、静かな資料感で見せる。`,
+      visualDirection: selectedAngle?.visualDirection ?? `${evidence ?? asset}を使い、静かな資料感で見せる。`,
       carouselPlan: [
         `1. ${selectedAngle?.firstSlideCopy ?? title}`,
         "2. なぜ今見直すのか",
@@ -1097,7 +1351,7 @@ function createMockCreativeBrief({
   };
 }
 
-function OptionGrid<T extends string>({
+function OptionGrid<T extends string | number>({
   current,
   items,
   onSelect,
@@ -1111,10 +1365,10 @@ function OptionGrid<T extends string>({
       {items.map((item) => (
         <StepButton
           active={current === item}
-          key={item}
+          key={String(item)}
           onClick={() => onSelect(item)}
         >
-          {item}
+          {String(item)}
         </StepButton>
       ))}
     </div>
@@ -1252,43 +1506,65 @@ function AssetSelection({
 function CreativeBriefForm({
   context,
   contextAnalyzed,
+  cta,
+  evidence,
   generationError,
   isGenerating,
   audience,
+  journeyStage,
   objective,
+  readiness,
+  readinessGoal,
+  selectedTriggers,
   simulation,
   tone,
   topic,
   onAnalyzeContext,
   onContextChange,
+  onCtaChange,
+  onEvidenceChange,
   onFounderAngleAdopt,
   onBack,
   onGenerate,
   onAudienceChange,
+  onJourneyStageChange,
   onObjectiveChange,
+  onReadinessGoalChange,
   onToneChange,
   onTopicChange,
+  onTriggerToggle,
 }: {
   context: string;
   contextAnalyzed: boolean;
+  cta: (typeof ctaOptions)[number];
+  evidence: (typeof evidenceOptions)[number];
   generationError: string;
   isGenerating: boolean;
   audience: (typeof audiences)[number];
+  journeyStage: (typeof journeyStages)[number];
   objective: (typeof objectives)[number];
+  readiness: PublishReadiness;
+  readinessGoal: (typeof readinessGoals)[number];
+  selectedTriggers: string[];
   simulation: PostSimulation;
   tone: (typeof tones)[number];
   topic: string;
   onAnalyzeContext: () => void;
   onBack: () => void;
   onContextChange: (value: string) => void;
+  onCtaChange: (value: (typeof ctaOptions)[number]) => void;
+  onEvidenceChange: (value: (typeof evidenceOptions)[number]) => void;
   onFounderAngleAdopt: (
     angle: CreativeBriefResponse["creativeAngles"][number],
   ) => void;
   onGenerate: () => void;
   onAudienceChange: (value: (typeof audiences)[number]) => void;
+  onJourneyStageChange: (value: (typeof journeyStages)[number]) => void;
   onObjectiveChange: (value: (typeof objectives)[number]) => void;
+  onReadinessGoalChange: (value: (typeof readinessGoals)[number]) => void;
   onToneChange: (value: (typeof tones)[number]) => void;
   onTopicChange: (value: string) => void;
+  onTriggerToggle: (value: string) => void;
 }) {
   const founderContext = getFounderContext({
     audience,
@@ -1341,10 +1617,62 @@ function CreativeBriefForm({
           />
         </div>
         <div>
+          <p className="mb-2 text-sm">ジャーニー段階</p>
+          <OptionGrid
+            current={journeyStage}
+            items={journeyStages}
+            onSelect={onJourneyStageChange}
+          />
+        </div>
+        <div>
           <p className="mb-2 text-sm">表現トーン</p>
           <OptionGrid current={tone} items={tones} onSelect={onToneChange} />
         </div>
+        <div>
+          <p className="mb-2 text-sm">ロジカルトリガー</p>
+          <div className="flex flex-wrap gap-2">
+            {logicalTriggers.map((trigger) => {
+              const active = selectedTriggers.includes(trigger);
+
+              return (
+                <button
+                  className={`min-h-10 border px-3 text-xs transition ${
+                    active
+                      ? "border-white bg-white text-black"
+                      : "border-white/10 bg-black/40 text-zinc-400 hover:bg-white/10"
+                  }`}
+                  key={trigger}
+                  onClick={() => onTriggerToggle(trigger)}
+                  type="button"
+                >
+                  {trigger}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div>
+          <p className="mb-2 text-sm">根拠素材</p>
+          <OptionGrid
+            current={evidence}
+            items={evidenceOptions}
+            onSelect={onEvidenceChange}
+          />
+        </div>
+        <div>
+          <p className="mb-2 text-sm">CTA</p>
+          <OptionGrid current={cta} items={ctaOptions} onSelect={onCtaChange} />
+        </div>
+        <div>
+          <p className="mb-2 text-sm">目標スコア</p>
+          <OptionGrid
+            current={readinessGoal}
+            items={readinessGoals}
+            onSelect={onReadinessGoalChange}
+          />
+        </div>
       </div>
+      <PublishReadinessPanel readiness={readiness} />
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <PillButton onClick={onAnalyzeContext}>AIが投稿の背景を読む</PillButton>
         <PillButton tone="light" onClick={onGenerate}>
@@ -1536,6 +1864,7 @@ function PublishReviewCard({
   isGenerating,
   objective,
   postType,
+  publishReadiness,
   saved,
   selectedFirstCopy,
   selectedHashtags,
@@ -1571,6 +1900,7 @@ function PublishReviewCard({
   isGenerating: boolean;
   objective: string;
   postType: string;
+  publishReadiness: PublishReadiness;
   saved: boolean;
   selectedFirstCopy: string;
   selectedHashtags: string[];
@@ -1866,6 +2196,8 @@ function PublishReviewCard({
             value={distributionPlan.recognition.current}
           />
         </div>
+
+        <PublishReadinessPanel readiness={publishReadiness} />
 
         <div className="grid gap-3">
           {[
