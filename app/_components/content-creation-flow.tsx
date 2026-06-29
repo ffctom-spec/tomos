@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   ApprovalItem,
   CreativeBriefResponse,
@@ -10,7 +10,9 @@ import { GlassCard, PillButton, ViewFrame } from "@/app/_components/view-frame";
 type FlowStep = 1 | 2 | 3 | 4 | 5 | 6;
 
 type UploadedAsset = {
+  id: string;
   name: string;
+  type: "image" | "video";
   url: string;
 };
 
@@ -138,19 +140,26 @@ export function ContentCreationFlow({
   const [editableBody, setEditableBody] = useState("");
   const [selectedHashtags, setSelectedHashtags] = useState<string[]>([]);
   const [saved, setSaved] = useState(false);
-  const [uploadedAsset, setUploadedAsset] = useState<UploadedAsset | null>(null);
+  const [uploadedAssets, setUploadedAssets] = useState<UploadedAsset[]>([]);
+  const [selectedAssetIndex, setSelectedAssetIndex] = useState(0);
   const [addedSeriesTitle, setAddedSeriesTitle] = useState("");
   const [addedConversationStarter, setAddedConversationStarter] = useState("");
   const [baselineReach, setBaselineReach] = useState("500");
   const [variantIndex, setVariantIndex] = useState(0);
 
+  const uploadedAssetsRef = useRef<UploadedAsset[]>([]);
+
+  useEffect(() => {
+    uploadedAssetsRef.current = uploadedAssets;
+  }, [uploadedAssets]);
+
   useEffect(() => {
     return () => {
-      if (uploadedAsset?.url) {
-        URL.revokeObjectURL(uploadedAsset.url);
-      }
+      uploadedAssetsRef.current.forEach((item) => URL.revokeObjectURL(item.url));
     };
-  }, [uploadedAsset]);
+  }, []);
+
+  const uploadedAsset = uploadedAssets[selectedAssetIndex] ?? null;
 
   const simulation = useMemo(
     () =>
@@ -250,27 +259,48 @@ export function ContentCreationFlow({
     onDraftSaved?.();
   }
 
-  function selectPhoto(file: File | undefined) {
-    if (!file) return;
+  function selectMedia(files: FileList | null) {
+    if (!files?.length) return;
 
-    if (uploadedAsset?.url) {
-      URL.revokeObjectURL(uploadedAsset.url);
-    }
+    const availableSlots = Math.max(0, 5 - uploadedAssets.length);
+    const nextAssets = Array.from(files)
+      .slice(0, availableSlots)
+      .map((file) => ({
+        id: `${file.name}-${file.lastModified}-${crypto.randomUUID()}`,
+        name: file.name,
+        type: file.type.startsWith("video/") ? "video" as const : "image" as const,
+        url: URL.createObjectURL(file),
+      }));
 
-    const nextAsset = {
-      name: file.name,
-      url: URL.createObjectURL(file),
-    };
-    setUploadedAsset(nextAsset);
+    if (!nextAssets.length) return;
+
+    setUploadedAssets((current) => [...current, ...nextAssets]);
+    setSelectedAssetIndex(uploadedAssets.length);
     setAsset("AI推奨アセット");
-    onPhotoAssetSelected?.(file.name);
+    onPhotoAssetSelected?.(nextAssets.map((item) => item.name).join(", "));
   }
 
-  function removePhoto() {
-    if (uploadedAsset?.url) {
-      URL.revokeObjectURL(uploadedAsset.url);
-    }
-    setUploadedAsset(null);
+  function removeMedia(index: number) {
+    setUploadedAssets((current) => {
+      const target = current[index];
+      if (target) URL.revokeObjectURL(target.url);
+      const next = current.filter((_, itemIndex) => itemIndex !== index);
+      setSelectedAssetIndex((selected) => Math.max(0, Math.min(selected, next.length - 1)));
+      return next;
+    });
+  }
+
+  function moveMedia(index: number, direction: -1 | 1) {
+    setUploadedAssets((current) => {
+      const nextIndex = index + direction;
+      if (nextIndex < 0 || nextIndex >= current.length) return current;
+      const next = [...current];
+      const [item] = next.splice(index, 1);
+      if (!item) return current;
+      next.splice(nextIndex, 0, item);
+      setSelectedAssetIndex(nextIndex);
+      return next;
+    });
   }
 
   function generateLocalVariant() {
@@ -393,10 +423,13 @@ export function ContentCreationFlow({
             {step === 4 ? (
               <AssetSelection
                 asset={asset}
-                uploadedAsset={uploadedAsset}
+                selectedAssetIndex={selectedAssetIndex}
+                uploadedAssets={uploadedAssets}
                 onAssetSelect={(value) => selectAndContinue(value, setAsset)}
-                onPhotoSelect={selectPhoto}
-                onRemovePhoto={removePhoto}
+                onMediaSelect={selectMedia}
+                onMoveMedia={moveMedia}
+                onRemoveMedia={removeMedia}
+                onSelectUploadedAsset={setSelectedAssetIndex}
               />
             ) : null}
             {step === 5 ? (
@@ -460,7 +493,8 @@ export function ContentCreationFlow({
             channel={channel}
             editableBody={editableBody}
             audience={audience}
-            uploadedAsset={uploadedAsset}
+            selectedAssetIndex={selectedAssetIndex}
+            uploadedAssets={uploadedAssets}
             instagramConnected={instagramConnected}
             isGenerating={isGenerating}
             objective={objective}
@@ -469,6 +503,7 @@ export function ContentCreationFlow({
             selectedFirstCopy={selectedFirstCopy}
             selectedHashtags={selectedHashtags}
             selectedTitle={selectedTitle}
+            onSelectUploadedAsset={setSelectedAssetIndex}
             seriesOpportunities={getSeriesOpportunities(topic, structure)}
             simulation={simulation}
             baselineReach={baselineReach}
@@ -1088,17 +1123,25 @@ function OptionGrid<T extends string>({
 
 function AssetSelection({
   asset,
-  uploadedAsset,
+  selectedAssetIndex,
+  uploadedAssets,
   onAssetSelect,
-  onPhotoSelect,
-  onRemovePhoto,
+  onMediaSelect,
+  onMoveMedia,
+  onRemoveMedia,
+  onSelectUploadedAsset,
 }: {
   asset: (typeof assets)[number];
-  uploadedAsset: UploadedAsset | null;
+  selectedAssetIndex: number;
+  uploadedAssets: UploadedAsset[];
   onAssetSelect: (value: (typeof assets)[number]) => void;
-  onPhotoSelect: (file: File | undefined) => void;
-  onRemovePhoto: () => void;
+  onMediaSelect: (files: FileList | null) => void;
+  onMoveMedia: (index: number, direction: -1 | 1) => void;
+  onRemoveMedia: (index: number) => void;
+  onSelectUploadedAsset: (index: number) => void;
 }) {
+  const selectedAsset = uploadedAssets[selectedAssetIndex] ?? null;
+
   return (
     <div className="grid gap-5">
       <OptionGrid current={asset} items={assets} onSelect={onAssetSelect} />
@@ -1111,40 +1154,96 @@ function AssetSelection({
             </p>
           </div>
           <label className="grid min-h-12 cursor-pointer place-items-center bg-white px-4 text-sm font-medium text-black">
-            写真をアップロード
+            素材をアップロード
             <input
-              accept="image/*"
+              accept="image/*,video/*"
               className="hidden"
-              onChange={(event) => onPhotoSelect(event.target.files?.[0])}
+              multiple
+              onChange={(event) => onMediaSelect(event.target.files)}
               type="file"
             />
           </label>
         </div>
         <div className="overflow-hidden border border-white/20 bg-zinc-950 p-2">
-          {uploadedAsset ? (
+          {selectedAsset?.type === "image" ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              alt={uploadedAsset.name}
+              alt={selectedAsset.name}
               className="aspect-[4/5] w-full object-cover"
-              src={uploadedAsset.url}
+              src={selectedAsset.url}
+            />
+          ) : selectedAsset?.type === "video" ? (
+            <video
+              className="aspect-[4/5] w-full object-cover"
+              controls
+              muted
+              playsInline
+              src={selectedAsset.url}
             />
           ) : (
             <div className="grid aspect-[4/5] w-full place-items-center bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]">
               <div className="text-center">
-                <p className="text-sm font-medium text-zinc-300">No image selected</p>
-                <p className="mt-2 text-xs text-zinc-500">Dark preview placeholder</p>
+                <p className="text-sm font-medium text-zinc-300">No media selected</p>
+                <p className="mt-2 text-xs text-zinc-500">Image / Video placeholder</p>
               </div>
             </div>
           )}
         </div>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-zinc-400">
-            {uploadedAsset ? uploadedAsset.name : "画像未選択"}
+            {selectedAsset ? `${selectedAssetIndex + 1} / ${uploadedAssets.length} ${selectedAsset.name}` : "素材未選択"}
           </p>
-          {uploadedAsset ? (
-            <PillButton onClick={onRemovePhoto}>画像を外す</PillButton>
+          {selectedAsset ? (
+            <PillButton onClick={() => onRemoveMedia(selectedAssetIndex)}>素材を外す</PillButton>
           ) : null}
         </div>
+        {uploadedAssets.length ? (
+          <div className="mt-4 grid gap-2">
+            {uploadedAssets.map((item, index) => (
+              <div
+                className={`grid grid-cols-[1fr_auto] gap-3 border p-3 ${
+                  index === selectedAssetIndex
+                    ? "border-white bg-white text-black"
+                    : "border-white/10 bg-black/35 text-zinc-300"
+                }`}
+                key={item.id}
+              >
+                <button
+                  className="text-left text-sm"
+                  onClick={() => onSelectUploadedAsset(index)}
+                  type="button"
+                >
+                  {index + 1} / 5 {item.type === "video" ? "Video" : "Image"} — {item.name}
+                </button>
+                <div className="flex gap-1">
+                  <button
+                    className="min-h-9 border border-current px-2 text-xs"
+                    disabled={index === 0}
+                    onClick={() => onMoveMedia(index, -1)}
+                    type="button"
+                  >
+                    ←
+                  </button>
+                  <button
+                    className="min-h-9 border border-current px-2 text-xs"
+                    disabled={index === uploadedAssets.length - 1}
+                    onClick={() => onMoveMedia(index, 1)}
+                    type="button"
+                  >
+                    →
+                  </button>
+                  <button
+                    className="min-h-9 border border-current px-2 text-xs"
+                    onClick={() => onRemoveMedia(index)}
+                    type="button"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -1431,7 +1530,8 @@ function PublishReviewCard({
   channel,
   distributionPlan,
   editableBody,
-  uploadedAsset,
+  selectedAssetIndex,
+  uploadedAssets,
   instagramConnected,
   isGenerating,
   objective,
@@ -1453,6 +1553,7 @@ function PublishReviewCard({
   onHashtagToggle,
   onRegenerate,
   onSave,
+  onSelectUploadedAsset,
   onTitleSelect,
 }: {
   addedSeriesTitle: string;
@@ -1464,7 +1565,8 @@ function PublishReviewCard({
   channel: string;
   distributionPlan: DistributionPlan;
   editableBody: string;
-  uploadedAsset: UploadedAsset | null;
+  selectedAssetIndex: number;
+  uploadedAssets: UploadedAsset[];
   instagramConnected: boolean;
   isGenerating: boolean;
   objective: string;
@@ -1486,6 +1588,7 @@ function PublishReviewCard({
   onHashtagToggle: (value: string) => void;
   onRegenerate: () => void;
   onSave: () => void;
+  onSelectUploadedAsset: (index: number) => void;
   onTitleSelect: (value: string) => void;
 }) {
   const statusMessage = instagramConnected
@@ -1511,13 +1614,17 @@ function PublishReviewCard({
         <PostPreview
           asset={asset}
           brand={brief.finalPost.hashtags[0]?.replace("#", "") ?? "TOMOS"}
+          channel={channel}
           cta={brief.finalPost.cta}
           hashtagCount={selectedHashtags.length}
           lead={brief.finalPost.lead}
           postType={postType}
+          selectedAssetIndex={selectedAssetIndex}
           selectedFirstCopy={selectedFirstCopy}
+          selectedHashtags={selectedHashtags}
           selectedTitle={selectedTitle}
-          uploadedAsset={uploadedAsset}
+          uploadedAssets={uploadedAssets}
+          onSelectAsset={onSelectUploadedAsset}
         />
 
         <DistributionDirectorCard distributionPlan={distributionPlan} />
@@ -1858,79 +1965,208 @@ function PublishReviewCard({
 function PostPreview({
   asset,
   brand,
+  channel,
   cta,
   hashtagCount,
   lead,
   postType,
+  selectedAssetIndex,
   selectedFirstCopy,
+  selectedHashtags,
   selectedTitle,
-  uploadedAsset,
+  uploadedAssets,
+  onSelectAsset,
 }: {
   asset: string;
   brand: string;
+  channel: string;
   cta: string;
   hashtagCount: number;
   lead: string;
   postType: string;
+  selectedAssetIndex: number;
   selectedFirstCopy: string;
+  selectedHashtags: string[];
   selectedTitle: string;
-  uploadedAsset: UploadedAsset | null;
+  uploadedAssets: UploadedAsset[];
+  onSelectAsset: (index: number) => void;
 }) {
   const isReel = postType === "Reel";
   const isCarousel = postType === "Carousel";
+  const [playing, setPlaying] = useState(true);
+  const selectedAsset = uploadedAssets[selectedAssetIndex] ?? null;
+  const previewLabel =
+    channel === "YouTube"
+      ? isReel ? "Shorts-like Preview" : "Video Card Preview"
+      : channel === "Threads"
+        ? "Conversation Preview"
+        : isReel ? "Reel Preview" : isCarousel ? "Carousel Preview" : "Photo Preview";
 
   return (
-    <div className="mb-5 overflow-hidden border border-white/20 bg-black/70">
-      <div className="flex items-center justify-between border-b border-white/10 p-4">
-        <div>
-          <p className="text-sm font-semibold">{brand}</p>
-          <p className="text-xs text-zinc-500">Instagram Preview / {postType}</p>
+    <div className="mb-5 border border-white/20 bg-black/70 p-3">
+      <div className="mx-auto max-w-[390px] overflow-hidden rounded-[2rem] border border-white/20 bg-[#080808] shadow-2xl shadow-black">
+        <div className="grid h-8 place-items-center border-b border-white/10">
+          <div className="h-2 w-24 rounded-full bg-white/20" />
         </div>
-        <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-zinc-400">
-          {isCarousel ? "1 / 5" : isReel ? "Reel Preview" : "Photo"}
-        </span>
-      </div>
-      <div className="relative bg-zinc-950 p-2">
-        {uploadedAsset ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            alt={uploadedAsset.name}
-            className="aspect-square w-full border border-white/15 object-cover"
-            src={uploadedAsset.url}
-          />
+
+        <div className="flex items-center justify-between border-b border-white/10 p-4">
+          <div>
+            <p className="text-sm font-semibold">{brand}</p>
+            <p className="text-xs text-zinc-500">
+              {channel} / {previewLabel}
+            </p>
+          </div>
+          <span className="border border-white/10 px-3 py-1 text-xs text-zinc-400">
+            Preview only
+          </span>
+        </div>
+
+        {channel === "Threads" ? (
+          <div className="p-4">
+            <p className="text-sm font-semibold">{brand}</p>
+            <p className="mt-3 text-base leading-7 text-zinc-100">{selectedTitle}</p>
+            <p className="mt-3 text-sm leading-6 text-zinc-400">{lead}</p>
+            {selectedAsset ? (
+              <div className="mt-4 overflow-hidden border border-white/15">
+                <PreviewMedia
+                  asset={selectedAsset}
+                  isReel={false}
+                  playing={playing}
+                  onTogglePlay={() => setPlaying((current) => !current)}
+                />
+              </div>
+            ) : null}
+            <p className="mt-4 text-xs text-zinc-500">
+              Reply / Repost / Share — Mock UI
+            </p>
+          </div>
         ) : (
-          <div className="grid aspect-square w-full place-items-center border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.015))]">
-            <div className="text-center">
-              <p className="text-sm font-medium text-zinc-300">{asset}</p>
-              <p className="mt-2 text-xs text-zinc-500">Preview placeholder</p>
+          <>
+            <div className="relative bg-zinc-950 p-2">
+              {selectedAsset ? (
+                <PreviewMedia
+                  asset={selectedAsset}
+                  isReel={isReel || channel === "YouTube"}
+                  playing={playing}
+                  onTogglePlay={() => setPlaying((current) => !current)}
+                />
+              ) : (
+                <div className="grid aspect-square w-full place-items-center border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.015))]">
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-zinc-300">{asset}</p>
+                    <p className="mt-2 text-xs text-zinc-500">Preview placeholder</p>
+                  </div>
+                </div>
+              )}
+              {isCarousel && uploadedAssets.length > 1 ? (
+                <div className="absolute right-4 top-4 bg-black/70 px-3 py-1 text-xs text-white">
+                  {selectedAssetIndex + 1} / {uploadedAssets.length}
+                </div>
+              ) : null}
+              {(isReel || channel === "YouTube") && selectedAsset?.type !== "video" ? (
+                <div className="absolute inset-0 grid place-items-center">
+                  <div className="grid size-16 place-items-center border border-white/20 bg-black/65 text-2xl text-white">
+                    ▶
+                  </div>
+                </div>
+              ) : null}
             </div>
-          </div>
+
+            {isCarousel && uploadedAssets.length > 1 ? (
+              <div className="flex justify-center gap-2 border-b border-white/10 py-3">
+                {uploadedAssets.map((item, index) => (
+                  <button
+                    aria-label={`Show media ${index + 1}: ${item.name}`}
+                    className={`size-2 rounded-full ${
+                      index === selectedAssetIndex ? "bg-white" : "bg-white/25"
+                    }`}
+                    key={item.id}
+                    onClick={() => onSelectAsset(index)}
+                    type="button"
+                  />
+                ))}
+              </div>
+            ) : null}
+
+            <div className="p-4">
+              {channel === "YouTube" ? (
+                <>
+                  <p className="text-base font-semibold">{selectedTitle}</p>
+                  <p className="mt-2 text-xs text-zinc-500">
+                    {brand} / Mock channel preview
+                  </p>
+                  <p className="mt-3 line-clamp-2 text-sm leading-6 text-zinc-400">
+                    {lead}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="flex gap-3 text-lg">
+                      <span>♡</span>
+                      <span>□</span>
+                      <span>↗</span>
+                    </div>
+                    <span className="text-xl">▱</span>
+                  </div>
+                  <p className="text-sm font-semibold">{selectedTitle}</p>
+                  <p className="mt-2 text-base font-semibold text-white">{selectedFirstCopy}</p>
+                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-400">{lead}</p>
+                </>
+              )}
+              <p className="mt-3 line-clamp-1 text-xs text-zinc-500">
+                {selectedHashtags.slice(0, 4).join(" ")}
+              </p>
+              <p className="mt-2 text-xs text-zinc-500">
+                ハッシュタグ {hashtagCount}件 / CTA: {cta}
+              </p>
+            </div>
+          </>
         )}
-        {isReel ? (
-          <div className="absolute inset-0 grid place-items-center">
-            <div className="grid size-16 place-items-center border border-white/20 bg-black/65 text-2xl text-white">
-              ▶
-            </div>
-          </div>
-        ) : null}
       </div>
-      <div className="p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex gap-3 text-lg">
-            <span>♡</span>
-            <span>□</span>
-            <span>↗</span>
-          </div>
-          <span className="text-xl">▱</span>
-        </div>
-        <p className="text-sm font-semibold">{selectedTitle}</p>
-        <p className="mt-2 text-base font-semibold text-white">{selectedFirstCopy}</p>
-        <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-400">{lead}</p>
-        <p className="mt-3 text-xs text-zinc-500">
-          ハッシュタグ {hashtagCount}件 / CTA: {cta}
-        </p>
-      </div>
+      <p className="mt-3 text-center text-xs text-zinc-600">
+        Mock UI / 実際の投稿画面を完全再現するものではありません
+      </p>
     </div>
+  );
+}
+
+function PreviewMedia({
+  asset,
+  isReel,
+  onTogglePlay,
+  playing,
+}: {
+  asset: UploadedAsset;
+  isReel: boolean;
+  onTogglePlay: () => void;
+  playing: boolean;
+}) {
+  if (asset.type === "video") {
+    return (
+      <button className="relative block w-full" onClick={onTogglePlay} type="button">
+        <video
+          autoPlay={playing}
+          className={`${isReel ? "aspect-[9/16]" : "aspect-square"} w-full border border-white/15 object-cover`}
+          loop
+          muted
+          playsInline
+          src={asset.url}
+        />
+        <span className="absolute bottom-3 right-3 bg-black/70 px-3 py-1 text-xs text-white">
+          {playing ? "Playing" : "Paused"}
+        </span>
+      </button>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      alt={asset.name}
+      className={`${isReel ? "aspect-[9/16]" : "aspect-square"} w-full border border-white/15 object-cover`}
+      src={asset.url}
+    />
   );
 }
 
