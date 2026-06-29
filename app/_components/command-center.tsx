@@ -228,6 +228,8 @@ export function CommandCenter({
   const [selectedStep, setSelectedStep] = useState(0);
   const [briefLevel, setBriefLevel] = useState<"cockpit" | "decisions" | "detail">("cockpit");
   const [selectedDecisionId, setSelectedDecisionId] = useState(priorityDecisions[0]?.id ?? "");
+  const [selectedCalendarSlot, setSelectedCalendarSlot] = useState("10:00-11:00");
+  const [selectedSlotTask, setSelectedSlotTask] = useState("Instagram Carousel最終確認");
 
   const selectedOrigin = useMemo(
     () => origins.find((origin) => origin.id === selectedOriginId) ?? origins[0],
@@ -371,6 +373,26 @@ export function CommandCenter({
               pending={pending}
               onNavigate={onNavigate}
             />
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 xl:grid-cols-12">
+          <div className="xl:col-span-4">
+            <TodayOperationsPanel onNavigate={onNavigate} />
+          </div>
+          <div className="xl:col-span-4">
+            <CalendarOpsPanel
+              selectedSlot={selectedCalendarSlot}
+              selectedTask={selectedSlotTask}
+              onSelect={(slot, task) => {
+                setSelectedCalendarSlot(slot);
+                setSelectedSlotTask(task);
+              }}
+              onConnect={() => onNavigate("integrations")}
+            />
+          </div>
+          <div className="xl:col-span-4">
+            <WeatherOpsPanel />
           </div>
         </div>
       </section>
@@ -953,6 +975,160 @@ function MiniDeckPanel({
         {action}
       </p>
     </button>
+  );
+}
+
+function TodayOperationsPanel({ onNavigate }: { onNavigate: (view: PortalView) => void }) {
+  return (
+    <section className="border border-white/[0.14] bg-[#050505] p-5">
+      <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
+        TODAY OPERATIONS
+      </p>
+      <div className="mt-4 grid gap-3">
+        {[
+          ["24H", "Instagram Carousel最終確認"],
+          ["3H", "YouTube Shortの粗編集"],
+          ["Today", "商品ページの価格比較確認"],
+        ].map(([time, task]) => (
+          <button
+            className="grid grid-cols-[64px_1fr] gap-3 border border-white/10 bg-black/35 p-3 text-left"
+            key={task}
+            onClick={() => onNavigate("approvals")}
+            type="button"
+          >
+            <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">{time}</p>
+            <p className="text-sm font-medium">{task}</p>
+          </button>
+        ))}
+      </div>
+      <details className="mt-4 border border-white/10 bg-black/30 p-3">
+        <summary className="cursor-pointer text-xs uppercase tracking-[0.18em] text-zinc-500">
+          Today Not Doing
+        </summary>
+        <div className="mt-3 grid gap-2 text-sm text-zinc-400">
+          <p>YouTube長尺動画の本編集 — 粗編集後に判断。</p>
+          <p>商品撮影の再レタッチ — 投稿素材を先に確定。</p>
+          <p>新規LPの細部調整 — 今日の売上導線を優先。</p>
+        </div>
+      </details>
+      <div className="mt-4 grid gap-2">
+        {[
+          ["10 min", "保存CTAを追加する"],
+          ["15 min", "Story投票を作る"],
+          ["20 min", "既存写真からCarousel 1枚目を選ぶ"],
+        ].map(([time, win]) => (
+          <button
+            className="min-h-11 border border-white/10 px-3 text-left text-xs text-zinc-300 hover:bg-white/10"
+            key={win}
+            onClick={() => onNavigate("broadcast")}
+            type="button"
+          >
+            Quick Win / {time} — {win}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CalendarOpsPanel({
+  onConnect,
+  onSelect,
+  selectedSlot,
+  selectedTask,
+}: {
+  onConnect: () => void;
+  onSelect: (slot: string, task: string) => void;
+  selectedSlot: string;
+  selectedTask: string;
+}) {
+  const windows = [
+    ["10:00-11:00", "Instagram Carousel最終確認", "25 min"],
+    ["14:30-15:00", "YouTube Shortのタイトル調整", "20 min"],
+    ["16:00-16:30", "Story投票の作成", "15 min"],
+  ];
+
+  return (
+    <section className="border border-white/[0.14] bg-[#050505] p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
+            CALENDAR OPS
+          </p>
+          <p className="mt-2 text-sm text-zinc-400">Google Calendar Not Connected</p>
+        </div>
+        <button className="border border-white/15 px-3 py-2 text-xs" onClick={onConnect} type="button">
+          Connect
+        </button>
+      </div>
+      <div className="mt-4 grid gap-2">
+        {windows.map(([slot, task, duration]) => (
+          <button
+            className={`border p-3 text-left ${
+              selectedSlot === slot
+                ? "border-white bg-white text-black"
+                : "border-white/10 bg-black/35 text-zinc-300"
+            }`}
+            key={slot}
+            onClick={() => onSelect(slot, task)}
+            type="button"
+          >
+            <p className="text-sm font-semibold">{slot}</p>
+            <p className="mt-1 text-xs opacity-70">Free Window / {duration}</p>
+            <p className="mt-2 text-sm">{task}</p>
+          </button>
+        ))}
+      </div>
+      <p className="mt-4 border border-white/10 bg-black/35 p-3 text-sm">
+        この枠で進める: {selectedSlot} / {selectedTask}
+      </p>
+      <p className="mt-3 text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+        Mock Schedule / Setup Required
+      </p>
+    </section>
+  );
+}
+
+function WeatherOpsPanel() {
+  return (
+    <section className="border border-white/[0.14] bg-[#050505] p-5">
+      <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">
+        WEATHER OPERATIONS
+      </p>
+      <div className="mt-4 flex items-end justify-between">
+        <div>
+          <p className="text-4xl font-semibold">Yokohama</p>
+          <p className="mt-2 text-sm text-zinc-500">Today / 24°C / Cloud → Rain</p>
+        </div>
+        <p className="text-right text-xs uppercase tracking-[0.16em] text-zinc-600">
+          Mock Weather Scenario
+        </p>
+      </div>
+      <div className="mt-5 grid grid-cols-4 gap-2">
+        {[
+          ["09:00", "晴れ", "10%"],
+          ["12:00", "曇り", "20%"],
+          ["15:00", "雨", "60%"],
+          ["18:00", "雨", "70%"],
+        ].map(([time, weather, rain]) => (
+          <div className="border border-white/10 bg-black/35 p-3" key={time}>
+            <p className="text-xs text-zinc-500">{time}</p>
+            <p className="mt-2 text-sm font-semibold">{weather}</p>
+            <p className="mt-1 text-xs text-zinc-500">{rain}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 border border-white/10 bg-black/35 p-3">
+        <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
+          Best Outdoor Window
+        </p>
+        <p className="mt-2 text-lg font-semibold">09:00-12:00</p>
+        <p className="mt-1 text-xs text-zinc-500">撮影・庭作業向き / 15:00以降注意</p>
+      </div>
+      <p className="mt-3 text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+        Weather Integration Not Connected
+      </p>
+    </section>
   );
 }
 
