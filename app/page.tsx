@@ -1,5 +1,5 @@
-import { PortalShell } from "@/app/_components/portal-shell";
+import { DashboardClient } from "@/app/_components/dx/dashboard-client";
 
 export default function Home() {
-  return <PortalShell />;
+  return <DashboardClient />;
 }
