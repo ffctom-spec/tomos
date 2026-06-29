@@ -77,6 +77,8 @@ type ProductRankItem = {
   aiScore: number;
 };
 
+type LanguageMode = "en" | "ja";
+
 const origins: OriginNode[] = [
   {
     id: "california",
@@ -260,11 +262,25 @@ export function CommandCenter({
   const [controls, setControls] = useState<CockpitControls>(initialControls);
   const [selectedOriginId, setSelectedOriginId] = useState("california");
   const [selectedStep, setSelectedStep] = useState(0);
-  const [briefLevel, setBriefLevel] = useState<"cockpit" | "decisions" | "detail" | "commerce" | "product-detail">("cockpit");
+  const [briefLevel, setBriefLevel] = useState<"cockpit" | "decisions" | "detail" | "commerce" | "product-detail" | "audience">("cockpit");
   const [selectedDecisionId, setSelectedDecisionId] = useState(priorityDecisions[0]?.id ?? "");
   const [selectedProductId, setSelectedProductId] = useState(productRanking[0]?.id ?? "");
   const [selectedCalendarSlot, setSelectedCalendarSlot] = useState("10:00-11:00");
   const [selectedSlotTask, setSelectedSlotTask] = useState("Instagram Carousel最終確認");
+  const [language, setLanguage] = useState<LanguageMode>(() => {
+    if (typeof window === "undefined") return "ja";
+
+    const saved = window.localStorage.getItem("tomos-language");
+    if (saved === "en" || saved === "ja") return saved;
+
+    const locale = `${window.navigator.language} ${window.navigator.languages?.join(" ")} ${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
+    return locale.includes("ja") || locale.includes("Asia/Tokyo") ? "ja" : "en";
+  });
+
+  function changeLanguage(nextLanguage: LanguageMode) {
+    setLanguage(nextLanguage);
+    localStorage.setItem("tomos-language", nextLanguage);
+  }
 
   const selectedOrigin = useMemo(
     () => origins.find((origin) => origin.id === selectedOriginId) ?? origins[0],
@@ -342,6 +358,16 @@ export function CommandCenter({
     ) : null;
   }
 
+  if (briefLevel === "audience") {
+    return (
+      <AudienceIntelligenceDeck
+        language={language}
+        onBack={() => setBriefLevel("cockpit")}
+        onCreateContent={() => onNavigate("broadcast")}
+      />
+    );
+  }
+
   return (
     <div className="grid gap-5">
       <section className="border border-white/[0.14] bg-[#030303]/90 p-5 shadow-[0_1px_0_rgba(255,255,255,0.05)_inset] sm:p-8">
@@ -356,6 +382,23 @@ export function CommandCenter({
               </span>
               <span className="border border-white/10 bg-black/40 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-zinc-500">
                 TOMOS AI Estimate
+              </span>
+              <div className="flex border border-white/10">
+                {(["en", "ja"] as LanguageMode[]).map((item) => (
+                  <button
+                    className={`px-3 py-1 text-[10px] uppercase tracking-[0.16em] ${
+                      language === item ? "bg-white text-black" : "text-zinc-500"
+                    }`}
+                    key={item}
+                    onClick={() => changeLanguage(item)}
+                    type="button"
+                  >
+                    {item === "ja" ? "日本語" : "EN"}
+                  </button>
+                ))}
+              </div>
+              <span className="border border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+                Auto: {language === "ja" ? "Japan" : "Global"} / Locale Estimate
               </span>
             </div>
             <h1 className="mt-5 max-w-5xl text-5xl font-semibold leading-none tracking-tight sm:text-7xl">
@@ -466,7 +509,7 @@ export function CommandCenter({
             <CommerceSnapshot onOpen={() => setBriefLevel("commerce")} />
           </div>
           <div className="xl:col-span-3">
-            <MarketRadarSnapshot onOpen={() => onNavigate("broadcast")} />
+            <MarketRadarSnapshot onOpen={() => setBriefLevel("audience")} />
           </div>
         </div>
       </section>
@@ -1426,6 +1469,131 @@ function ProductDetailDeck({
             実際の仕入れ・販売前に、規約・真贋・在庫・送料・税金・知的財産を確認してください。
           </p>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function AudienceIntelligenceDeck({
+  language,
+  onBack,
+  onCreateContent,
+}: {
+  language: LanguageMode;
+  onBack: () => void;
+  onCreateContent: () => void;
+}) {
+  const [selectedInterest, setSelectedInterest] = useState("Dry Garden");
+  const regionLabel =
+    language === "ja"
+      ? "Tokyo / Kanagawa / East Japan Scenario"
+      : "Generic Regional Scenario / Local Market";
+  const researchQuery =
+    language === "ja"
+      ? "ドライガーデン 関東 戸建て 外構 トレンド"
+      : "dry garden outdoor living consumer trend";
+
+  return (
+    <section className="border border-white/[0.14] bg-[#030303]/90 p-5 sm:p-8">
+      <div className="mb-8 flex items-start justify-between gap-4 border-b border-white/10 pb-6">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.26em] text-zinc-500">
+            07 / AUDIENCE INTELLIGENCE
+          </p>
+          <h1 className="mt-4 text-5xl font-semibold tracking-tight">
+            Interest Graph / TOMOS AI Estimate
+          </h1>
+          <p className="mt-3 text-sm text-zinc-500">
+            Audience Scenario / Not live audience analytics
+          </p>
+        </div>
+        <button className="min-h-11 border border-white/15 px-4 text-sm" onClick={onBack} type="button">
+          Back
+        </button>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+        <div className="relative min-h-[420px] border border-white/10 bg-black/35 p-5">
+          <div className="absolute left-1/2 top-1/2 grid size-36 -translate-x-1/2 -translate-y-1/2 place-items-center border border-white bg-white text-center text-black">
+            <div>
+              <p className="text-xs uppercase tracking-[0.16em] text-zinc-600">Core</p>
+              <p className="mt-2 text-lg font-semibold">Dry Garden</p>
+            </div>
+          </div>
+          {[
+            ["アガベ・ユッカ・ロストラータ", 18, 20, 92],
+            ["カリフォルニアモダン住宅", 66, 18, 88],
+            ["アウトドアリビング", 76, 50, 83],
+            ["省メンテナンスな庭", 55, 76, 86],
+            ["鉢・照明・ガビオン", 20, 72, 80],
+            ["インテリアと屋外空間", 12, 48, 77],
+          ].map(([label, x, y, strength]) => (
+            <button
+              className={`absolute min-h-12 -translate-x-1/2 -translate-y-1/2 border px-3 text-xs ${
+                selectedInterest === label
+                  ? "border-white bg-white text-black"
+                  : "border-white/15 bg-black/80 text-zinc-300"
+              }`}
+              key={String(label)}
+              onClick={() => setSelectedInterest(String(label))}
+              style={{ left: `${x}%`, top: `${y}%` }}
+              type="button"
+            >
+              {label}
+              <span className="ml-2 text-zinc-500">{strength}</span>
+            </button>
+          ))}
+        </div>
+        <div className="grid gap-4">
+          <div className="border border-white/10 bg-black/35 p-5">
+            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+              Audience Scenario
+            </p>
+            <p className="mt-3 text-lg font-semibold">
+              Primary: 30-49 / Home & Garden
+            </p>
+            <p className="mt-2 text-sm text-zinc-500">{regionLabel}</p>
+            <p className="mt-4 text-sm font-semibold">{selectedInterest}</p>
+          </div>
+          <div className="border border-white/10 bg-black/35 p-5">
+            <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+              What They May Care About
+            </p>
+            <div className="mt-3 grid gap-2 text-sm text-zinc-400">
+              <p>手間をかけずに庭を格好よく見せたい</p>
+              <p>植物・鉢・照明を統一したい</p>
+              <p>戸建てやベランダの印象を上げたい</p>
+              <p>高価な植物を失敗させたくない</p>
+            </div>
+          </div>
+          <button className="min-h-12 bg-white px-4 text-sm font-medium text-black" onClick={onCreateContent} type="button">
+            Create Content Opportunity
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-4">
+        {[
+          ["INDUSTRY SIGNAL", "省メンテナンスな庭の文脈を保存型投稿へ変換"],
+          ["AUDIENCE INTEREST", "ドライガーデンと外構の統一感"],
+          ["REGIONAL LIFESTYLE", "都市近郊の戸建て・庭づくりScenario"],
+          ["PRODUCT OPPORTUNITY", "鉢・照明・用土の比較導線"],
+        ].map(([type, title]) => (
+          <div className="border border-white/10 bg-black/35 p-4" key={type}>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+              {type}
+            </p>
+            <p className="mt-3 text-sm leading-6">{title}</p>
+            <a
+              className="mt-4 block text-xs uppercase tracking-[0.16em] text-zinc-400 hover:text-white"
+              href={`https://www.google.com/search?q=${encodeURIComponent(researchQuery)}`}
+              rel="noreferrer"
+              target="_blank"
+            >
+              Open Research
+            </a>
+          </div>
+        ))}
       </div>
     </section>
   );
