@@ -2327,6 +2327,7 @@ function PostPreview({
   const isCarousel = postType === "Carousel";
   const [playing, setPlaying] = useState(true);
   const selectedAsset = uploadedAssets[selectedAssetIndex] ?? null;
+  const isInstagram = channel === "Instagram";
   const previewLabel =
     channel === "YouTube"
       ? isReel ? "Shorts-like Preview" : "Video Card Preview"
@@ -2336,21 +2337,34 @@ function PostPreview({
 
   return (
     <div className="mb-5 border border-white/20 bg-black/70 p-3">
-      <div className="mx-auto max-w-[390px] overflow-hidden rounded-[2rem] border border-white/20 bg-[#080808] shadow-2xl shadow-black">
-        <div className="grid h-8 place-items-center border-b border-white/10">
-          <div className="h-2 w-24 rounded-full bg-white/20" />
+      <div className="mx-auto max-w-[390px] overflow-hidden rounded-[2.4rem] border border-white/20 bg-[#050505] shadow-2xl shadow-black">
+        <div className="relative flex h-11 items-center justify-between border-b border-white/10 px-5 text-[11px] text-zinc-300">
+          <span>9:41</span>
+          <div className="absolute left-1/2 top-3 h-5 w-28 -translate-x-1/2 rounded-full bg-black shadow-[0_0_0_1px_rgba(255,255,255,0.12)]" />
+          <div className="flex gap-1 text-[10px]">
+            <span>5G</span>
+            <span>▰</span>
+          </div>
         </div>
 
         <div className="flex items-center justify-between border-b border-white/10 p-4">
-          <div>
-            <p className="text-sm font-semibold">{brand}</p>
-            <p className="text-xs text-zinc-500">
-              {channel} / {previewLabel}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="grid size-9 place-items-center rounded-full border border-white/20 bg-white text-xs font-semibold text-black">
+              {brand.slice(0, 1)}
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{brand}</p>
+              <p className="text-xs text-zinc-500">
+                {isInstagram ? "Yokohama / Draft Preview" : `${channel} / ${previewLabel}`}
+              </p>
+            </div>
           </div>
-          <span className="border border-white/10 px-3 py-1 text-xs text-zinc-400">
-            Preview only
-          </span>
+          <div className="text-right">
+            <p className="text-xs text-zinc-500">
+              {isInstagram ? previewLabel : "Preview only"}
+            </p>
+            <p className="mt-1 text-lg leading-none text-zinc-400">•••</p>
+          </div>
         </div>
 
         {channel === "Threads" ? (
@@ -2391,7 +2405,7 @@ function PostPreview({
                 </div>
               )}
               {isCarousel && uploadedAssets.length > 1 ? (
-                <div className="absolute right-4 top-4 bg-black/70 px-3 py-1 text-xs text-white">
+                <div className="absolute right-4 top-4 rounded-full bg-black/70 px-3 py-1 text-xs text-white">
                   {selectedAssetIndex + 1} / {uploadedAssets.length}
                 </div>
               ) : null}
@@ -2405,7 +2419,15 @@ function PostPreview({
             </div>
 
             {isCarousel && uploadedAssets.length > 1 ? (
-              <div className="flex justify-center gap-2 border-b border-white/10 py-3">
+              <div className="flex items-center justify-center gap-2 border-b border-white/10 py-3">
+                <button
+                  className="mr-2 grid size-8 place-items-center rounded-full border border-white/10 text-xs text-zinc-400 disabled:opacity-30"
+                  disabled={selectedAssetIndex === 0}
+                  onClick={() => onSelectAsset(Math.max(0, selectedAssetIndex - 1))}
+                  type="button"
+                >
+                  ←
+                </button>
                 {uploadedAssets.map((item, index) => (
                   <button
                     aria-label={`Show media ${index + 1}: ${item.name}`}
@@ -2417,6 +2439,14 @@ function PostPreview({
                     type="button"
                   />
                 ))}
+                <button
+                  className="ml-2 grid size-8 place-items-center rounded-full border border-white/10 text-xs text-zinc-400 disabled:opacity-30"
+                  disabled={selectedAssetIndex === uploadedAssets.length - 1}
+                  onClick={() => onSelectAsset(Math.min(uploadedAssets.length - 1, selectedAssetIndex + 1))}
+                  type="button"
+                >
+                  →
+                </button>
               </div>
             ) : null}
 
@@ -2434,27 +2464,50 @@ function PostPreview({
               ) : (
                 <>
                   <div className="mb-3 flex items-center justify-between">
-                    <div className="flex gap-3 text-lg">
+                    <div className="flex gap-4 text-2xl leading-none">
                       <span>♡</span>
-                      <span>□</span>
+                      <span>◌</span>
                       <span>↗</span>
                     </div>
-                    <span className="text-xl">▱</span>
+                    <span className="text-2xl leading-none">▱</span>
                   </div>
-                  <p className="text-sm font-semibold">{selectedTitle}</p>
-                  <p className="mt-2 text-base font-semibold text-white">{selectedFirstCopy}</p>
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-400">{lead}</p>
+                  <p className="text-xs font-semibold text-zinc-300">
+                    {Math.max(124, selectedTitle.length * 17).toLocaleString()} likes
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-zinc-200">
+                    <span className="font-semibold text-white">{brand}</span>{" "}
+                    {selectedFirstCopy}
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-sm leading-6 text-zinc-400">{lead}</p>
                 </>
               )}
-              <p className="mt-3 line-clamp-1 text-xs text-zinc-500">
+              <p className="mt-3 line-clamp-2 text-xs leading-5 text-zinc-500">
                 {selectedHashtags.slice(0, 4).join(" ")}
               </p>
               <p className="mt-2 text-xs text-zinc-500">
                 ハッシュタグ {hashtagCount}件 / CTA: {cta}
               </p>
+              {isInstagram ? (
+                <div className="mt-4 border-t border-white/10 pt-3">
+                  <p className="text-xs text-zinc-600">View all 12 comments</p>
+                  <div className="mt-3 flex items-center gap-3">
+                    <div className="size-6 rounded-full border border-white/15 bg-white/10" />
+                    <p className="text-xs text-zinc-500">Add a comment...</p>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </>
         )}
+        {isInstagram ? (
+          <div className="grid grid-cols-5 border-t border-white/10 py-3 text-center text-lg text-zinc-300">
+            <span>⌂</span>
+            <span>⌕</span>
+            <span>＋</span>
+            <span>▻</span>
+            <span>●</span>
+          </div>
+        ) : null}
       </div>
       <p className="mt-3 text-center text-xs text-zinc-600">
         Mock UI / 実際の投稿画面を完全再現するものではありません
