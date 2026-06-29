@@ -49,6 +49,22 @@ type OriginNode = {
   priority: BusinessPriority[];
 };
 
+type PriorityDecision = {
+  id: string;
+  title: string;
+  importance: string;
+  deadline: string;
+  action: string;
+  kpi: string;
+  whyNow: string;
+  recommendation: string;
+  risk: string;
+  options: string[];
+  relatedPost: string;
+  relatedProduct: string;
+  calendarSlot: string;
+};
+
 const origins: OriginNode[] = [
   {
     id: "california",
@@ -145,6 +161,54 @@ const initialControls: CockpitControls = {
   route: "Content Signal",
 };
 
+const priorityDecisions: PriorityDecision[] = [
+  {
+    id: "carousel-soil",
+    title: "0円土づくりCarouselを今日出すか",
+    importance: "High",
+    deadline: "Today",
+    action: "保存型投稿として下書き化",
+    kpi: "Save / AIO",
+    whyNow: "低コストで始められる土づくりは、保存理由を作りやすいScenarioです。",
+    recommendation: "California SignalをVERDNAの暮らし寄りCarouselへ変換。",
+    risk: "効果を断定せず、土を見直す入口として表現する必要があります。",
+    options: ["Carouselで出す", "Storyで反応を見る", "今日は保留"],
+    relatedPost: "0円でできる土壌改良",
+    relatedProduct: "土 / 鉢 / ガーデングッズ",
+    calendarSlot: "10:00-11:00",
+  },
+  {
+    id: "product-route",
+    title: "鉢・土のProduct Routeを検証するか",
+    importance: "Medium",
+    deadline: "24H",
+    action: "商品導線の比較表を作る",
+    kpi: "Commerce",
+    whyNow: "コンテンツから商品比較へ接続できるScenarioです。",
+    recommendation: "小さく高品質な導線だけを検証。",
+    risk: "実仕入れ・在庫・送料・規約は未確認です。",
+    options: ["比較表を作る", "商品候補だけ保存", "見送る"],
+    relatedPost: "腐葉土・培養土・堆肥の違い",
+    relatedProduct: "培養土 / 鉢",
+    calendarSlot: "14:30-15:00",
+  },
+  {
+    id: "short-title",
+    title: "YouTube Shortのタイトルを調整するか",
+    importance: "Medium",
+    deadline: "3H",
+    action: "冒頭3秒を強くする",
+    kpi: "Reach",
+    whyNow: "短尺は最初の判断が強いほど反応を見やすいScenarioです。",
+    recommendation: "保存版ではなく発見型の短いタイトルへ変更。",
+    risk: "動画素材が弱い場合はCarousel優先。",
+    options: ["Short案を作る", "Carouselへ変更", "保留"],
+    relatedPost: "肥料を買う前に",
+    relatedProduct: "なし",
+    calendarSlot: "16:00-16:30",
+  },
+];
+
 export function CommandCenter({
   approvals,
   brief,
@@ -162,6 +226,8 @@ export function CommandCenter({
   const [controls, setControls] = useState<CockpitControls>(initialControls);
   const [selectedOriginId, setSelectedOriginId] = useState("california");
   const [selectedStep, setSelectedStep] = useState(0);
+  const [briefLevel, setBriefLevel] = useState<"cockpit" | "decisions" | "detail">("cockpit");
+  const [selectedDecisionId, setSelectedDecisionId] = useState(priorityDecisions[0]?.id ?? "");
 
   const selectedOrigin = useMemo(
     () => origins.find((origin) => origin.id === selectedOriginId) ?? origins[0],
@@ -176,6 +242,8 @@ export function CommandCenter({
     () => getFlightPlan(selectedOrigin, controls),
     [controls, selectedOrigin],
   );
+  const selectedDecision =
+    priorityDecisions.find((item) => item.id === selectedDecisionId) ?? priorityDecisions[0];
 
   function updateControl<Key extends keyof CockpitControls>(
     key: Key,
@@ -184,6 +252,30 @@ export function CommandCenter({
     const nextControls = { ...controls, [key]: value };
     setControls(nextControls);
     setSelectedOriginId(getRecommendedOrigin(nextControls).id);
+  }
+
+  if (briefLevel === "decisions") {
+    return (
+      <PriorityDecisionDeck
+        decisions={priorityDecisions}
+        onBack={() => setBriefLevel("cockpit")}
+        onSelect={(id) => {
+          setSelectedDecisionId(id);
+          setBriefLevel("detail");
+        }}
+      />
+    );
+  }
+
+  if (briefLevel === "detail" && selectedDecision) {
+    return (
+      <DecisionDetailDeck
+        decision={selectedDecision}
+        onBack={() => setBriefLevel("decisions")}
+        onCreateContent={() => onNavigate("broadcast")}
+        onReviewProduct={() => onNavigate("product")}
+      />
+    );
   }
 
   return (
@@ -208,6 +300,17 @@ export function CommandCenter({
             <p className="mt-5 max-w-2xl text-sm leading-6 text-zinc-400">
               世界・日本・ブランドの接点から、次の成長ルートを選ぶ。
             </p>
+            <button
+              className="mt-6 border border-white bg-white px-5 py-4 text-left text-black"
+              onClick={() => setBriefLevel("decisions")}
+              type="button"
+            >
+              <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+                Today&apos;s Critical Decision
+              </p>
+              <p className="mt-2 text-lg font-semibold">{priorityDecisions[0]?.title}</p>
+              <p className="mt-1 text-xs text-zinc-600">Open Priority Decisions</p>
+            </button>
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-2">
@@ -423,6 +526,151 @@ function GlobalRouteMap({
             ))}
           </div>
           <p className="mt-3 text-sm font-semibold">Yokohama / Tokyo Bay</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PriorityDecisionDeck({
+  decisions,
+  onBack,
+  onSelect,
+}: {
+  decisions: PriorityDecision[];
+  onBack: () => void;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <section className="border border-white/[0.14] bg-[#030303]/90 p-5 sm:p-8">
+      <div className="mb-8 flex items-start justify-between gap-4 border-b border-white/10 pb-6">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.26em] text-zinc-500">
+            02 / EXECUTIVE BRIEF
+          </p>
+          <h1 className="mt-4 text-5xl font-semibold tracking-tight">
+            Priority Decisions
+          </h1>
+          <p className="mt-3 text-sm text-zinc-500">
+            最大9件の重要判断 / Scenario / TOMOS AI Estimate
+          </p>
+        </div>
+        <button
+          className="min-h-11 border border-white/15 px-4 text-sm text-zinc-300"
+          onClick={onBack}
+          type="button"
+        >
+          Back
+        </button>
+      </div>
+      <div className="grid gap-3 md:grid-cols-3">
+        {decisions.map((decision, index) => (
+          <button
+            className="border border-white/10 bg-black/35 p-5 text-left transition hover:border-white/40"
+            key={decision.id}
+            onClick={() => onSelect(decision.id)}
+            type="button"
+          >
+            <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+              {String(index + 1).padStart(2, "0")} / {decision.importance}
+            </p>
+            <h2 className="mt-4 text-xl font-semibold leading-7">{decision.title}</h2>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <PulseBlock label="Deadline" value={decision.deadline} />
+              <PulseBlock label="KPI" value={decision.kpi} />
+            </div>
+            <p className="mt-4 text-sm leading-6 text-zinc-400">
+              {decision.action}
+            </p>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DecisionDetailDeck({
+  decision,
+  onBack,
+  onCreateContent,
+  onReviewProduct,
+}: {
+  decision: PriorityDecision;
+  onBack: () => void;
+  onCreateContent: () => void;
+  onReviewProduct: () => void;
+}) {
+  return (
+    <section className="border border-white/[0.14] bg-[#030303]/90 p-5 sm:p-8">
+      <div className="mb-8 flex items-start justify-between gap-4 border-b border-white/10 pb-6">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.26em] text-zinc-500">
+            03 / DECISION DETAIL
+          </p>
+          <h1 className="mt-4 max-w-4xl text-5xl font-semibold tracking-tight">
+            {decision.title}
+          </h1>
+        </div>
+        <button
+          className="min-h-11 border border-white/15 px-4 text-sm text-zinc-300"
+          onClick={onBack}
+          type="button"
+        >
+          Back
+        </button>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+        <div className="grid gap-4 md:grid-cols-2">
+          {[
+            ["Why now", decision.whyNow],
+            ["KPI impact", decision.kpi],
+            ["AI recommendation", decision.recommendation],
+            ["Risk", decision.risk],
+            ["Related post", decision.relatedPost],
+            ["Calendar slot", decision.calendarSlot],
+          ].map(([label, value]) => (
+            <div className="border border-white/10 bg-black/35 p-5" key={label}>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+                {label}
+              </p>
+              <p className="mt-3 text-sm leading-6 text-zinc-300">{value}</p>
+            </div>
+          ))}
+        </div>
+        <div className="border border-white/10 bg-black/35 p-5">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+            Options
+          </p>
+          <div className="mt-4 grid gap-2">
+            {decision.options.map((option) => (
+              <button
+                className="min-h-12 border border-white/15 px-4 text-left text-sm text-zinc-200 hover:bg-white/10"
+                key={option}
+                type="button"
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+          <div className="mt-5 grid gap-2">
+            <button
+              className="min-h-12 bg-white px-4 text-sm font-medium text-black"
+              onClick={onCreateContent}
+              type="button"
+            >
+              Create Content
+            </button>
+            <button
+              className="min-h-12 border border-white/15 px-4 text-sm text-zinc-200"
+              onClick={onReviewProduct}
+              type="button"
+            >
+              Review Product
+            </button>
+          </div>
+          <p className="mt-4 text-xs leading-5 text-zinc-600">
+            Scenario / TOMOS AI Estimate. 実データ連携ではありません。
+          </p>
         </div>
       </div>
     </section>
