@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { cloudConfigured, loadCloudEpisodes, saveCloudEpisodes, type PrivacyStatus, type SunsetDeckEpisode } from '@/lib/sunset-deck-cloud';
+import YouTubeUploadPanel from './YouTubeUploadPanel';
 import styles from './sunset-deck.module.css';
 
 type Status = SunsetDeckEpisode['status'];
@@ -52,9 +53,6 @@ export default function SunsetDeckOS() {
   const [filter, setFilter] = useState<'all' | Status>('all');
   const [note, setNote] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
-  const [youtubeVideoId, setYoutubeVideoId] = useState('');
-  const [scheduledAt, setScheduledAt] = useState('');
-  const [privacyStatus, setPrivacyStatus] = useState<PrivacyStatus>('private');
   const [saved, setSaved] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [syncState, setSyncState] = useState<SyncState>('loading');
@@ -108,10 +106,7 @@ export default function SunsetDeckOS() {
     if (!active) return;
     setNote(active.note);
     setPreviewUrl(active.previewUrl ?? '');
-    setYoutubeVideoId(active.youtubeVideoId ?? '');
-    setScheduledAt(active.scheduledAt ? active.scheduledAt.slice(0, 16) : '');
-    setPrivacyStatus(active.privacyStatus ?? 'private');
-  }, [active?.id, active?.note, active?.previewUrl, active?.youtubeVideoId, active?.scheduledAt, active?.privacyStatus]);
+  }, [active?.id, active?.note, active?.previewUrl]);
 
   function updateActive(patch: Partial<Episode>) {
     if (!active) return;
@@ -126,21 +121,6 @@ export default function SunsetDeckOS() {
     updateActive({ note: note.trim() || active.note, previewUrl: previewUrl.trim() });
     setSaved(true);
     window.setTimeout(() => setSaved(false), 1600);
-  }
-
-  function savePublishing() {
-    const normalizedSchedule = scheduledAt ? new Date(scheduledAt).toISOString() : undefined;
-    updateActive({
-      youtubeVideoId: youtubeVideoId.trim(),
-      scheduledAt: normalizedSchedule,
-      privacyStatus,
-      publishState: normalizedSchedule ? 'scheduled' : youtubeVideoId.trim() ? 'ready' : 'not_ready',
-      publishError: undefined,
-    });
-  }
-
-  function markPublished() {
-    updateActive({ publishState: 'published', publishedAt: new Date().toISOString(), scheduledAt: active.scheduledAt });
   }
 
   function exportData() {
@@ -214,12 +194,30 @@ export default function SunsetDeckOS() {
             <div className={styles.actions}><button onClick={() => changeStatus('production')}>差し戻す</button><button onClick={() => changeStatus('approved')} className={styles.approve}>承認する</button></div>
 
             <div className={styles.publishForm}>
-              <p className={styles.eyebrow}>YOUTUBE DELIVERY</p>
-              <label>YouTube動画ID</label><input className={styles.urlInput} value={youtubeVideoId} onChange={(e) => setYoutubeVideoId(e.target.value)} placeholder="例: dQw4w9WgXcQ" />
-              <div className={styles.formRow}><div><label>公開日時</label><input type="datetime-local" className={styles.urlInput} value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} /></div><div><label>公開範囲</label><select className={styles.urlInput} value={privacyStatus} onChange={(e) => setPrivacyStatus(e.target.value as PrivacyStatus)}><option value="private">非公開</option><option value="unlisted">限定公開</option><option value="public">公開</option></select></div></div>
-              <div className={styles.publishStatus}><span className={`${styles.publishDot} ${styles[active.publishState || 'not_ready']}`} /><strong>{publishLabel[active.publishState || 'not_ready']}</strong><small>{formatSchedule(active.scheduledAt)}</small></div>
-              <button onClick={savePublishing} className={styles.publishButton}>公開設定を保存</button>
-              {active.publishState === 'scheduled' && <button onClick={markPublished} className={styles.ghostPublish}>公開済みにする</button>}
+              <p className={styles.eyebrow}>YOUTUBE DIRECT DELIVERY</p>
+              <YouTubeUploadPanel
+                episodeId={active.id}
+                title={active.title}
+                subtitle={active.subtitle}
+                series={active.series}
+                hook={active.hook}
+                note={active.note}
+                initialScheduledAt={active.scheduledAt}
+                initialPrivacyStatus={active.privacyStatus}
+                onUploaded={({ videoId, scheduledAt, privacyStatus, previewUrl: uploadedPreview }) => {
+                  setPreviewUrl(uploadedPreview);
+                  updateActive({
+                    youtubeVideoId: videoId,
+                    previewUrl: uploadedPreview,
+                    scheduledAt,
+                    privacyStatus,
+                    publishState: scheduledAt ? 'scheduled' : privacyStatus === 'private' ? 'ready' : 'published',
+                    publishedAt: scheduledAt || privacyStatus === 'private' ? undefined : new Date().toISOString(),
+                    publishError: undefined,
+                  });
+                }}
+              />
+              {active.youtubeVideoId ? <div className={styles.publishStatus}><span className={`${styles.publishDot} ${styles[active.publishState || 'not_ready']}`} /><strong>{publishLabel[active.publishState || 'not_ready']}</strong><small>動画ID: {active.youtubeVideoId} ・ {formatSchedule(active.scheduledAt)}</small></div> : null}
             </div>
           </aside>
         </div>
