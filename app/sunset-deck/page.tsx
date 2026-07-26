@@ -1,7 +1,8 @@
 'use client';
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { cloudConfigured, loadCloudEpisodes, saveCloudEpisodes, type PrivacyStatus, type SunsetDeckEpisode } from '@/lib/sunset-deck-cloud';
+import { cloudConfigured, loadCloudEpisodes, saveCloudEpisodes, type SunsetDeckEpisode } from '@/lib/sunset-deck-cloud';
+import StoryboardDeck from './StoryboardDeck';
 import YouTubeUploadPanel from './YouTubeUploadPanel';
 import styles from './sunset-deck.module.css';
 
@@ -19,20 +20,6 @@ const seedEpisodes: Episode[] = [
 
 const statusLabel: Record<Status, string> = { idea: '企画', script: '台本', production: '制作中', review: '承認待ち', approved: '承認済み' };
 const publishLabel = { not_ready: '未準備', ready: '公開準備完了', scheduled: '公開予約済み', published: '公開済み', failed: '公開エラー' } as const;
-
-function toEmbedUrl(url?: string) {
-  if (!url) return '';
-  try {
-    const parsed = new URL(url);
-    if (parsed.hostname.includes('youtu.be')) return `https://www.youtube.com/embed/${parsed.pathname.slice(1)}`;
-    if (parsed.hostname.includes('youtube.com')) {
-      const id = parsed.searchParams.get('v');
-      if (id) return `https://www.youtube.com/embed/${id}`;
-      if (parsed.pathname.startsWith('/embed/')) return url;
-    }
-    return url;
-  } catch { return ''; }
-}
 
 function syncLabel(syncState: SyncState) {
   if (syncState === 'loading') return '○ 読み込み中';
@@ -69,8 +56,9 @@ export default function SunsetDeckOS() {
         try {
           const cloudEpisodes = await loadCloudEpisodes();
           if (!cancelled && cloudEpisodes?.length) {
-            setEpisodes(cloudEpisodes);
-            localStorage.setItem('sunset-deck-episodes', JSON.stringify(cloudEpisodes));
+            const merged = seedEpisodes.map((seed) => ({ ...seed, ...(cloudEpisodes.find((item) => item.id === seed.id) || {}) }));
+            setEpisodes(merged);
+            localStorage.setItem('sunset-deck-episodes', JSON.stringify(merged));
           }
           if (!cancelled) setSyncState('cloud');
         } catch { if (!cancelled) setSyncState('error'); }
@@ -100,7 +88,6 @@ export default function SunsetDeckOS() {
   const avgProgress = episodes.length ? Math.round(episodes.reduce((sum, e) => sum + e.progress, 0) / episodes.length) : 0;
   const morningQueue = useMemo(() => episodes.filter((e) => ['review', 'production'].includes(e.status)).slice(0, 3), [episodes]);
   const publishQueue = useMemo(() => episodes.filter((e) => e.status === 'approved' || ['ready', 'scheduled', 'published', 'failed'].includes(e.publishState || 'not_ready')), [episodes]);
-  const embedUrl = toEmbedUrl(active?.previewUrl);
 
   useEffect(() => {
     if (!active) return;
@@ -157,20 +144,20 @@ export default function SunsetDeckOS() {
 
       <section className={styles.workspace}>
         <header className={styles.header}>
-          <div><p className={styles.eyebrow}>MORNING CONTROL DESK</p><h2>おはようございます、トムさん。</h2><p>通勤中に、再生・修正・承認・公開予約まで完了できます。</p></div>
+          <div><p className={styles.eyebrow}>MORNING CONTROL DESK</p><h2>おはようございます、トムさん。</h2><p>シナリオ確認・承認・動画制作・公開まで、ひとつの画面で管理します。</p></div>
           <div className={styles.headerActions}><span className={styles.syncBadge}>{syncLabel(syncState)}</span><button onClick={exportData} className={styles.ghost}>バックアップ</button><button onClick={() => importRef.current?.click()} className={styles.ghost}>復元</button><input ref={importRef} type="file" accept="application/json" onChange={importData} hidden /></div>
         </header>
 
         <section className={styles.metrics}>
           <article><span>承認待ち</span><strong>{reviewCount}</strong><small>最優先で確認</small></article>
-          <article><span>承認済み</span><strong>{approvedCount}</strong><small>公開可能</small></article>
+          <article><span>承認済み</span><strong>{approvedCount}</strong><small>動画制作へ</small></article>
           <article><span>公開予約</span><strong>{scheduledCount}</strong><small>YouTube公開待ち</small></article>
           <article><span>制作進捗</span><strong>{avgProgress}%</strong><small>全エピソード平均</small></article>
         </section>
 
         <section className={styles.morningBrief}>
           <div className={styles.sectionTitle}><div><p className={styles.eyebrow}>MORNING REVIEW</p><h3>今朝、見るもの</h3></div><span>最大3本</span></div>
-          <div className={styles.queue}>{morningQueue.map((item, index) => <button key={item.id} onClick={() => setActiveId(item.id)} className={activeId === item.id ? styles.queueActive : ''}><b>0{index + 1}</b><span><strong>{item.title}</strong><small>{statusLabel[item.status]} ・ {item.previewUrl ? '再生可能' : 'URL待ち'}</small></span><em>→</em></button>)}</div>
+          <div className={styles.queue}>{morningQueue.map((item, index) => <button key={item.id} onClick={() => setActiveId(item.id)} className={activeId === item.id ? styles.queueActive : ''}><b>0{index + 1}</b><span><strong>{item.title}</strong><small>{statusLabel[item.status]} ・ シナリオ確認可能</small></span><em>→</em></button>)}</div>
         </section>
 
         <section className={styles.publishingBoard}>
@@ -180,46 +167,37 @@ export default function SunsetDeckOS() {
 
         <div className={styles.mainGrid}>
           <section className={styles.library}>
-            <div className={styles.sectionTitle}><div><p className={styles.eyebrow}>CONTENT PIPELINE</p><h3>YouTube動画リスト</h3></div><div className={styles.filters}>{(['all', 'review', 'production', 'script', 'idea', 'approved'] as const).map((item) => <button key={item} onClick={() => setFilter(item)} className={filter === item ? styles.filterActive : ''}>{item === 'all' ? 'すべて' : statusLabel[item]}</button>)}</div></div>
-            <div className={styles.episodeList}>{visible.map((item) => <button key={item.id} onClick={() => setActiveId(item.id)} className={active.id === item.id ? styles.episodeActive : ''}><div className={styles.thumb}><span>EP.0{item.id}</span><b>{item.previewUrl ? '▶ READY' : `${item.progress}%`}</b></div><div className={styles.episodeCopy}><small>{item.series}</small><strong>{item.title}</strong><span>{item.subtitle}</span></div><div className={styles.episodeMeta}><span className={`${styles.badge} ${styles[item.status]}`}>{statusLabel[item.status]}</span><small>{item.updated}</small></div></button>)}</div>
+            <div className={styles.sectionTitle}><div><p className={styles.eyebrow}>EPISODE LIBRARY</p><h3>エピソード一覧</h3></div><div className={styles.filters}>{(['all', 'review', 'production', 'script', 'idea', 'approved'] as const).map((item) => <button key={item} onClick={() => setFilter(item)} className={filter === item ? styles.filterActive : ''}>{item === 'all' ? 'すべて' : statusLabel[item]}</button>)}</div></div>
+            <div className={styles.episodeList}>{visible.map((item) => <button key={item.id} onClick={() => setActiveId(item.id)} className={active.id === item.id ? styles.episodeActive : ''}><div className={styles.thumb}><span>EP.0{item.id}</span><b>{item.progress}%</b></div><div className={styles.episodeCopy}><small>{item.series}</small><strong>{item.title}</strong><span>{item.subtitle}</span></div><div className={styles.episodeMeta}><span className={`${styles.badge} ${styles[item.status]}`}>{statusLabel[item.status]}</span><small>{item.updated}</small></div></button>)}</div>
           </section>
 
-          <aside className={styles.reviewPanel}>
-            <p className={styles.eyebrow}>REVIEW & PUBLISH</p><h3>{active.title}</h3><span className={styles.subTitle}>{active.subtitle}</span>
-            {embedUrl ? (embedUrl.includes('youtube.com/embed/') ? <iframe className={styles.videoFrame} src={embedUrl} title={active.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /> : <video className={styles.videoFrame} src={embedUrl} controls playsInline />) : <div className={styles.videoMock}><div className={styles.play}>▶</div><small>PREVIEW URLを登録してください</small></div>}
-            <label>プレビューURL</label><input className={styles.urlInput} value={previewUrl} onChange={(e) => setPreviewUrl(e.target.value)} placeholder="YouTube限定公開URL または MP4 URL" inputMode="url" />
-            <label>冒頭フック</label><blockquote>{active.hook}</blockquote>
-            <label>制作メモ／修正指示</label><textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="ストーリー補足、UI修正、ナレーション指示を入力" />
-            <button onClick={saveReview} className={styles.secondary}>{saved ? '保存しました' : 'URLと修正指示を保存'}</button>
-            <div className={styles.actions}><button onClick={() => changeStatus('production')}>差し戻す</button><button onClick={() => changeStatus('approved')} className={styles.approve}>承認する</button></div>
+          <div className={styles.reviewWorkspace}>
+            <StoryboardDeck episodeId={active.id} title={active.title} subtitle={active.subtitle} series={active.series} status={statusLabel[active.status]} onApprove={() => changeStatus('approved')} onReturn={() => changeStatus('production')} />
 
-            <div className={styles.publishForm}>
-              <p className={styles.eyebrow}>YOUTUBE DIRECT DELIVERY</p>
-              <YouTubeUploadPanel
-                episodeId={active.id}
-                title={active.title}
-                subtitle={active.subtitle}
-                series={active.series}
-                hook={active.hook}
-                note={active.note}
-                initialScheduledAt={active.scheduledAt}
-                initialPrivacyStatus={active.privacyStatus}
-                onUploaded={({ videoId, scheduledAt, privacyStatus, previewUrl: uploadedPreview }) => {
-                  setPreviewUrl(uploadedPreview);
-                  updateActive({
-                    youtubeVideoId: videoId,
-                    previewUrl: uploadedPreview,
-                    scheduledAt,
-                    privacyStatus,
-                    publishState: scheduledAt ? 'scheduled' : privacyStatus === 'private' ? 'ready' : 'published',
-                    publishedAt: scheduledAt || privacyStatus === 'private' ? undefined : new Date().toISOString(),
-                    publishError: undefined,
-                  });
-                }}
-              />
-              {active.youtubeVideoId ? <div className={styles.publishStatus}><span className={`${styles.publishDot} ${styles[active.publishState || 'not_ready']}`} /><strong>{publishLabel[active.publishState || 'not_ready']}</strong><small>動画ID: {active.youtubeVideoId} ・ {formatSchedule(active.scheduledAt)}</small></div> : null}
-            </div>
-          </aside>
+            <section className={styles.deliveryPanel}>
+              <div className={styles.deliveryHeading}><div><p className={styles.eyebrow}>PRODUCTION & DELIVERY</p><h3>承認後の動画・YouTube公開</h3></div><span>{active.status === 'approved' ? '制作可能' : 'シナリオ承認待ち'}</span></div>
+              <label>制作メモ／修正指示</label><textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="ストーリー補足、映像、ナレーションの修正指示" />
+              <label>既存プレビューURL</label><input className={styles.urlInput} value={previewUrl} onChange={(e) => setPreviewUrl(e.target.value)} placeholder="YouTube限定公開URL または MP4 URL" inputMode="url" />
+              <button onClick={saveReview} className={styles.secondary}>{saved ? '保存しました' : '修正指示を保存'}</button>
+              <div className={styles.publishForm}>
+                <YouTubeUploadPanel
+                  episodeId={active.id}
+                  title={active.title}
+                  subtitle={active.subtitle}
+                  series={active.series}
+                  hook={active.hook}
+                  note={active.note}
+                  initialScheduledAt={active.scheduledAt}
+                  initialPrivacyStatus={active.privacyStatus}
+                  onUploaded={({ videoId, scheduledAt, privacyStatus, previewUrl: uploadedPreview }) => {
+                    setPreviewUrl(uploadedPreview);
+                    updateActive({ youtubeVideoId: videoId, previewUrl: uploadedPreview, scheduledAt, privacyStatus, publishState: scheduledAt ? 'scheduled' : privacyStatus === 'private' ? 'ready' : 'published', publishedAt: scheduledAt || privacyStatus === 'private' ? undefined : new Date().toISOString(), publishError: undefined });
+                  }}
+                />
+                {active.youtubeVideoId ? <div className={styles.publishStatus}><span className={`${styles.publishDot} ${styles[active.publishState || 'not_ready']}`} /><strong>{publishLabel[active.publishState || 'not_ready']}</strong><small>動画ID: {active.youtubeVideoId} ・ {formatSchedule(active.scheduledAt)}</small></div> : null}
+              </div>
+            </section>
+          </div>
         </div>
       </section>
     </main>
