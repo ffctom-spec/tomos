@@ -1,3 +1,5 @@
+import { getAccessToken, getStoredSession } from '@/lib/sunset-deck-auth';
+
 export type SunsetDeckEpisode = {
   id: number;
   title: string;
@@ -19,9 +21,10 @@ const studioId = process.env.NEXT_PUBLIC_SUNSET_DECK_STUDIO_ID || 'sunset-deck';
 export const cloudConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 function headers(prefer?: string): HeadersInit {
+  const accessToken = getAccessToken();
   return {
     apikey: supabaseAnonKey || '',
-    Authorization: `Bearer ${supabaseAnonKey || ''}`,
+    Authorization: `Bearer ${accessToken || supabaseAnonKey || ''}`,
     'Content-Type': 'application/json',
     ...(prefer ? { Prefer: prefer } : {}),
   };
@@ -44,8 +47,11 @@ function fromRow(row: Record<string, unknown>): SunsetDeckEpisode {
 }
 
 function toRow(episode: SunsetDeckEpisode) {
+  const userId = getStoredSession()?.user.id;
+  if (!userId) throw new Error('Authentication required.');
   return {
     studio_id: studioId,
+    owner_id: userId,
     episode_id: episode.id,
     title: episode.title,
     subtitle: episode.subtitle,
@@ -62,7 +68,7 @@ function toRow(episode: SunsetDeckEpisode) {
 }
 
 export async function loadCloudEpisodes(): Promise<SunsetDeckEpisode[] | null> {
-  if (!cloudConfigured) return null;
+  if (!cloudConfigured || !getAccessToken()) return null;
   const url = `${supabaseUrl}/rest/v1/sunset_deck_episodes?studio_id=eq.${encodeURIComponent(studioId)}&select=*&order=episode_id.asc`;
   const response = await fetch(url, { headers: headers(), cache: 'no-store' });
   if (!response.ok) throw new Error(`Cloud load failed: ${response.status}`);
@@ -71,8 +77,8 @@ export async function loadCloudEpisodes(): Promise<SunsetDeckEpisode[] | null> {
 }
 
 export async function saveCloudEpisodes(episodes: SunsetDeckEpisode[]): Promise<void> {
-  if (!cloudConfigured) return;
-  const url = `${supabaseUrl}/rest/v1/sunset_deck_episodes?on_conflict=studio_id,episode_id`;
+  if (!cloudConfigured || !getAccessToken()) return;
+  const url = `${supabaseUrl}/rest/v1/sunset_deck_episodes?on_conflict=studio_id,owner_id,episode_id`;
   const response = await fetch(url, {
     method: 'POST',
     headers: headers('resolution=merge-duplicates,return=minimal'),
