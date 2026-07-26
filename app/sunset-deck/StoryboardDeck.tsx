@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { productionManifests } from './production-manifests';
 import { storyboards } from './storyboards';
 import styles from './storyboard-deck.module.css';
 
@@ -14,10 +15,23 @@ type Props = {
   onReturn: () => void;
 };
 
+type ReviewTab = 'scenario' | 'discovery' | 'production';
+
 export default function StoryboardDeck({ episodeId, title, subtitle, series, status, onApprove, onReturn }: Props) {
-  const deck = storyboards[episodeId] || storyboards[1];
-  const [activeSceneId, setActiveSceneId] = useState(deck.scenes[0]?.id || 1);
-  const [tab, setTab] = useState<'scenario' | 'discovery'>('scenario');
+  const deck = storyboards[episodeId];
+  const manifest = productionManifests[episodeId];
+  const [activeSceneId, setActiveSceneId] = useState(deck?.scenes[0]?.id || 1);
+  const [tab, setTab] = useState<ReviewTab>('scenario');
+
+  useEffect(() => {
+    setActiveSceneId(deck?.scenes[0]?.id || 1);
+    setTab('scenario');
+  }, [episodeId, deck?.scenes]);
+
+  if (!deck) {
+    return <section className={styles.deck}><div className={styles.emptyDeck}><strong>EP.{String(episodeId).padStart(2, '0')} のシナリオデータがありません。</strong><p>別エピソードの内容へ置き換えず、データ不足として停止しました。</p></div></section>;
+  }
+
   const scene = useMemo(() => deck.scenes.find((item) => item.id === activeSceneId) || deck.scenes[0], [activeSceneId, deck.scenes]);
   const missingCount = deck.scenes.reduce((sum, item) => sum + (item.missing?.length || 0), 0);
 
@@ -42,6 +56,7 @@ export default function StoryboardDeck({ episodeId, title, subtitle, series, sta
       <nav className={styles.tabs}>
         <button className={tab === 'scenario' ? styles.activeTab : ''} onClick={() => setTab('scenario')}>シナリオ・絵コンテ</button>
         <button className={tab === 'discovery' ? styles.activeTab : ''} onClick={() => setTab('discovery')}>AIO・検索・おすすめ設計</button>
+        {manifest && <button className={tab === 'production' ? styles.activeTab : ''} onClick={() => setTab('production')}>動画制作工程</button>}
       </nav>
 
       {tab === 'scenario' ? (
@@ -78,7 +93,7 @@ export default function StoryboardDeck({ episodeId, title, subtitle, series, sta
             </div>
           </article>
         </div>
-      ) : (
+      ) : tab === 'discovery' ? (
         <div className={styles.discovery}>
           <div className={styles.discoveryHero}>
             <p className={styles.kicker}>DISCOVERY PACKAGE</p>
@@ -96,7 +111,25 @@ export default function StoryboardDeck({ episodeId, title, subtitle, series, sta
             <section><h4>AIO理解設計</h4><ul><li>主題を1文で明示</li><li>質問形式の論点を本文で直接回答</li><li>固有名詞・時代・場所・因果関係をナレーション化</li></ul></section>
           </div>
         </div>
-      )}
+      ) : manifest ? (
+        <div className={styles.productionWorkspace}>
+          <div className={styles.productionHero}>
+            <div><p className={styles.kicker}>EP.01 PRODUCTION MANIFEST</p><h3>脚本から限定公開MP4までの制作ライン</h3></div>
+            <div className={styles.productionSpecs}><span>{manifest.targetDuration}</span><span>{manifest.format}</span><span>{manifest.renderSpec}</span></div>
+          </div>
+          <div className={styles.directionGrid}>
+            <section><h4>AIナレーション方針</h4><p>{manifest.narrationVoice}</p></section>
+            <section><h4>BGM方針</h4><p>{manifest.musicDirection}</p></section>
+          </div>
+          <div className={styles.pipeline}>
+            {manifest.steps.map((step, index) => <article key={step.id}><b>{String(index + 1).padStart(2, '0')}</b><div><strong>{step.label}</strong><p>{step.detail}</p></div><span className={styles[step.status]}>{step.status === 'ready' ? '準備済み' : step.status === 'blocked' ? '素材待ち' : '未着手'}</span></article>)}
+          </div>
+          <div className={styles.assetBoard}>
+            <h3>シーン別 素材生成・調達リスト</h3>
+            {manifest.assets.map((asset, index) => <article key={`${asset.sceneId}-${asset.label}`}><span>SCENE {String(asset.sceneId).padStart(2, '0')}</span><div><strong>{asset.label}</strong><small>{asset.kind.toUpperCase()}</small>{asset.prompt && <pre>{asset.prompt}</pre>}</div><em>{asset.status === 'ready' ? '準備済み' : '生成・調達が必要'}</em></article>)}
+          </div>
+        </div>
+      ) : null}
 
       <footer className={styles.footer}>
         <button onClick={onReturn}>差し戻す</button>
