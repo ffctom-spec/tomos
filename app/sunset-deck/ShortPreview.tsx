@@ -1,6 +1,8 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import { shortPreviewCopy } from './EpisodeThumbnail';
+import styles from './thumbnail.module.css';
 
 type Props = { episodeId: number; title: string; onClose: () => void };
 
@@ -15,18 +17,16 @@ const beats: Record<number, string[]> = {
 export default function ShortPreview({ episodeId, title, onClose }: Props) {
   const item = shortPreviewCopy[episodeId] || shortPreviewCopy[1];
   const lines = beats[episodeId] || beats[1];
-  return <div className="shortPreviewBackdrop" role="dialog" aria-modal="true" aria-label={`${title} ショート版プレビュー`} onClick={onClose}>
-    <div className="shortPreviewPanel" onClick={(event) => event.stopPropagation()}>
-      <div className="shortPreviewHeader"><div><span>SHORTS PREVIEW</span><strong>{title}</strong></div><button type="button" onClick={onClose}>×</button></div>
-      <div className="shortPhone">
-        <div className="shortFrame" style={{ '--short-accent': item.accent } as React.CSSProperties}>
-          <div className="shortBrand">SUNSET DECK</div><div className="shortEpisode">EP.{String(episodeId).padStart(2, '0')}</div>
-          <div className="shortVisual"><span className={`shortGlyph shortGlyph${episodeId}`} /></div>
-          <div className="shortCopy"><small>{item.kicker}</small><h3>{item.line1}<br/>{item.line2}</h3><p>{item.hook}</p></div>
-          <div className="shortProgress"><i /><i /><i /><i /></div>
-        </div>
-      </div>
-      <div className="shortTimeline"><h4>約45秒の短縮構成</h4>{lines.map((line, index) => <div key={line}><span>0:{String(index * 11).padStart(2, '0')}</span><p>{line}</p></div>)}</div>
+  return <div className={styles.backdrop} role="dialog" aria-modal="true" aria-label={`${title} ショート版プレビュー`} onClick={onClose}>
+    <div className={styles.panel} onClick={(event) => event.stopPropagation()}>
+      <div className={styles.modalHeader}><div><span>SHORTS PREVIEW</span><strong>{title}</strong></div><button type="button" onClick={onClose}>×</button></div>
+      <div className={styles.phone}><div className={styles.frame} style={{ '--short-accent': item.accent } as CSSProperties}>
+        <div className={styles.brand}>SUNSET DECK</div><div className={styles.episode}>EP.{String(episodeId).padStart(2, '0')}</div>
+        <div className={styles.visual}><span className={`${styles.glyph} ${styles[`glyph${episodeId}`] || ''}`} /></div>
+        <div className={styles.copy}><small>{item.kicker}</small><h3>{item.line1}<br/>{item.line2}</h3><p>{item.hook}</p></div>
+        <div className={styles.progress}><i /><i /><i /><i /></div>
+      </div></div>
+      <div className={styles.timeline}><h4>約45秒の短縮構成</h4>{lines.map((line, index) => <div key={line}><span>0:{String(index * 11).padStart(2, '0')}</span><p>{line}</p></div>)}</div>
     </div>
   </div>;
 }
