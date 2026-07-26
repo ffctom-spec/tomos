@@ -19,24 +19,28 @@ type YouTubeErrorBody = {
 export type ScheduleVideoInput = {
   videoId: string;
   scheduledAt: string;
+  refreshToken?: string;
 };
 
 export type PublishVideoInput = {
   videoId: string;
   privacyStatus: Exclude<YouTubePrivacy, 'private'>;
+  refreshToken?: string;
 };
 
-function requiredEnv(name: 'YOUTUBE_OAUTH_CLIENT_ID' | 'YOUTUBE_OAUTH_CLIENT_SECRET' | 'YOUTUBE_OAUTH_REFRESH_TOKEN') {
+function requiredEnv(name: 'YOUTUBE_OAUTH_CLIENT_ID' | 'YOUTUBE_OAUTH_CLIENT_SECRET') {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is not configured.`);
   return value;
 }
 
-async function getAccessToken() {
+async function getAccessToken(refreshToken?: string) {
+  const token = refreshToken?.trim() || process.env.YOUTUBE_OAUTH_REFRESH_TOKEN?.trim();
+  if (!token) throw new Error('YouTubeチャンネルが接続されていません。');
   const body = new URLSearchParams({
     client_id: requiredEnv('YOUTUBE_OAUTH_CLIENT_ID'),
     client_secret: requiredEnv('YOUTUBE_OAUTH_CLIENT_SECRET'),
-    refresh_token: requiredEnv('YOUTUBE_OAUTH_REFRESH_TOKEN'),
+    refresh_token: token,
     grant_type: 'refresh_token',
   });
 
@@ -53,14 +57,11 @@ async function getAccessToken() {
   return data.access_token;
 }
 
-async function updateVideoStatus(videoId: string, status: Record<string, unknown>) {
-  const accessToken = await getAccessToken();
+async function updateVideoStatus(videoId: string, status: Record<string, unknown>, refreshToken?: string) {
+  const accessToken = await getAccessToken(refreshToken);
   const response = await fetch('https://www.googleapis.com/youtube/v3/videos?part=status', {
     method: 'PUT',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ id: videoId, status }),
     cache: 'no-store',
   });
@@ -75,19 +76,14 @@ async function updateVideoStatus(videoId: string, status: Record<string, unknown
 export async function scheduleYouTubeVideo(input: ScheduleVideoInput) {
   const videoId = input.videoId.trim();
   if (!/^[A-Za-z0-9_-]{6,20}$/.test(videoId)) throw new Error('YouTube動画IDが正しくありません。');
-
   const scheduledDate = new Date(input.scheduledAt);
   if (Number.isNaN(scheduledDate.getTime())) throw new Error('公開予約日時が正しくありません。');
   if (scheduledDate.getTime() <= Date.now() + 60_000) throw new Error('公開予約日時は現在より1分以上先に設定してください。');
-
-  return updateVideoStatus(videoId, {
-    privacyStatus: 'private',
-    publishAt: scheduledDate.toISOString(),
-  });
+  return updateVideoStatus(videoId, { privacyStatus: 'private', publishAt: scheduledDate.toISOString() }, input.refreshToken);
 }
 
 export async function publishYouTubeVideo(input: PublishVideoInput) {
   const videoId = input.videoId.trim();
   if (!/^[A-Za-z0-9_-]{6,20}$/.test(videoId)) throw new Error('YouTube動画IDが正しくありません。');
-  return updateVideoStatus(videoId, { privacyStatus: input.privacyStatus });
+  return updateVideoStatus(videoId, { privacyStatus: input.privacyStatus }, input.refreshToken);
 }
