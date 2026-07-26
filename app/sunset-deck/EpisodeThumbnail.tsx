@@ -1,5 +1,7 @@
 'use client';
 
+import styles from './thumbnail.module.css';
+
 type Props = { episodeId: number; compact?: boolean; onClick?: () => void };
 
 const copy: Record<number, { kicker: string; line1: string; line2: string; hook: string; accent: string }> = {
@@ -22,7 +24,7 @@ function Artwork({ episodeId, accent }: { episodeId: number; accent: string }) {
 
 export default function EpisodeThumbnail({ episodeId, compact = false, onClick }: Props) {
   const item = copy[episodeId] || copy[1];
-  return <button type="button" className={`episodeThumbArt ${compact ? 'episodeThumbCompact' : ''}`} onClick={onClick} aria-label={`EP.${String(episodeId).padStart(2, '0')} ショート版を開く`}>
+  return <button type="button" className={`${styles.art} ${compact ? styles.compact : ''}`} onClick={(event) => { event.stopPropagation(); onClick?.(); }} aria-label={`EP.${String(episodeId).padStart(2, '0')} ショート版を開く`}>
     <svg viewBox="0 0 1280 720" role="img" aria-label={`${item.line1}${item.line2}`}>
       <defs><linearGradient id={`bg-${episodeId}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#090909"/><stop offset=".58" stopColor="#242018"/><stop offset="1" stopColor="#050505"/></linearGradient><radialGradient id={`glow-${episodeId}`} cx="75%" cy="35%" r="55%"><stop offset="0" stopColor={item.accent} stopOpacity=".34"/><stop offset="1" stopColor="#000" stopOpacity="0"/></radialGradient></defs>
       <rect width="1280" height="720" fill={`url(#bg-${episodeId})`}/><rect width="1280" height="720" fill={`url(#glow-${episodeId})`}/><Artwork episodeId={episodeId} accent={item.accent}/>
