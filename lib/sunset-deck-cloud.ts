@@ -1,5 +1,8 @@
 import { getAccessToken, getStoredSession } from '@/lib/sunset-deck-auth';
 
+export type PublishState = 'not_ready' | 'ready' | 'scheduled' | 'published' | 'failed';
+export type PrivacyStatus = 'private' | 'unlisted' | 'public';
+
 export type SunsetDeckEpisode = {
   id: number;
   title: string;
@@ -12,6 +15,12 @@ export type SunsetDeckEpisode = {
   hook: string;
   note: string;
   previewUrl?: string;
+  youtubeVideoId?: string;
+  publishState?: PublishState;
+  privacyStatus?: PrivacyStatus;
+  scheduledAt?: string;
+  publishedAt?: string;
+  publishError?: string;
 };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '');
@@ -43,6 +52,12 @@ function fromRow(row: Record<string, unknown>): SunsetDeckEpisode {
     hook: String(row.hook || ''),
     note: String(row.note || ''),
     previewUrl: row.preview_url ? String(row.preview_url) : undefined,
+    youtubeVideoId: row.youtube_video_id ? String(row.youtube_video_id) : undefined,
+    publishState: (row.publish_state || 'not_ready') as PublishState,
+    privacyStatus: (row.privacy_status || 'private') as PrivacyStatus,
+    scheduledAt: row.scheduled_at ? String(row.scheduled_at) : undefined,
+    publishedAt: row.published_at ? String(row.published_at) : undefined,
+    publishError: row.publish_error ? String(row.publish_error) : undefined,
   };
 }
 
@@ -63,6 +78,12 @@ function toRow(episode: SunsetDeckEpisode) {
     hook: episode.hook,
     note: episode.note,
     preview_url: episode.previewUrl || null,
+    youtube_video_id: episode.youtubeVideoId || null,
+    publish_state: episode.publishState || 'not_ready',
+    privacy_status: episode.privacyStatus || 'private',
+    scheduled_at: episode.scheduledAt || null,
+    published_at: episode.publishedAt || null,
+    publish_error: episode.publishError || null,
     updated_at: new Date().toISOString(),
   };
 }
