@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { getAccessToken } from '@/lib/sunset-deck-auth';
 import {
   cloudConfigured,
   loadCloudEpisodes,
@@ -38,12 +39,17 @@ export default function PublishingPage() {
   const [episodes, setEpisodes] = useState<SunsetDeckEpisode[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
   const [syncLabel, setSyncLabel] = useState('読み込み中');
+  const [apiLabel, setApiLabel] = useState('');
+  const [apiBusy, setApiBusy] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       const stored = localStorage.getItem('sunset-deck-episodes');
-      const local = stored ? JSON.parse(stored) as SunsetDeckEpisode[] : [];
+      let local: SunsetDeckEpisode[] = [];
+      if (stored) {
+        try { local = JSON.parse(stored) as SunsetDeckEpisode[]; } catch { local = []; }
+      }
       if (!cancelled) setEpisodes(local);
       if (cloudConfigured) {
         try {
@@ -68,6 +74,7 @@ export default function PublishingPage() {
 
   useEffect(() => {
     if (active && activeId === null) setActiveId(active.id);
+    setApiLabel('');
   }, [active, activeId]);
 
   async function updateActive(patch: Partial<SunsetDeckEpisode>) {
@@ -84,9 +91,44 @@ export default function PublishingPage() {
     }
   }
 
-  function schedulePublish() {
-    if (!active?.scheduledAt) return;
-    updateActive({ publishState: 'scheduled', publishError: undefined });
+  async function callYouTube(action: 'schedule' | 'publish_now') {
+    if (!active?.youtubeVideoId) return setApiLabel('YouTube動画IDを入力してください。');
+    if (action === 'schedule' && !active.scheduledAt) return setApiLabel('公開予約日時を入力してください。');
+    if (active.status !== 'approved') return setApiLabel('動画承認後に実行できます。');
+
+    const accessToken = getAccessToken();
+    if (!accessToken) return setApiLabel('Studio OSへ再ログインしてください。');
+
+    setApiBusy(true);
+    setApiLabel(action === 'schedule' ? 'YouTubeへ公開予約を登録中…' : 'YouTubeへ公開設定を反映中…');
+    try {
+      const response = await fetch('/api/sunset-deck/youtube/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          action,
+          videoId: active.youtubeVideoId,
+          scheduledAt: active.scheduledAt,
+          privacyStatus: active.privacyStatus === 'unlisted' ? 'unlisted' : 'public',
+        }),
+      });
+      const result = await response.json() as { ok?: boolean; error?: string };
+      if (!response.ok || !result.ok) throw new Error(result.error || 'YouTube APIの操作に失敗しました。');
+
+      if (action === 'schedule') {
+        await updateActive({ publishState: 'scheduled', privacyStatus: 'public', publishError: undefined });
+        setApiLabel('YouTubeへの公開予約が完了しました。予約時点では非公開で、指定日時に公開されます。');
+      } else {
+        await updateActive({ publishState: 'published', publishedAt: new Date().toISOString(), publishError: undefined });
+        setApiLabel('YouTubeの公開設定を反映しました。');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'YouTube APIの操作に失敗しました。';
+      await updateActive({ publishState: 'failed', publishError: message });
+      setApiLabel(message);
+    } finally {
+      setApiBusy(false);
+    }
   }
 
   return (
@@ -97,7 +139,7 @@ export default function PublishingPage() {
           <h1>PUBLISHING</h1>
           <Link href="/sunset-deck">← Studio OSへ戻る</Link>
         </div>
-        <small>承認済み動画を公開予約へ送る管理画面</small>
+        <small>承認済み動画をYouTube公開予約へ送る管理画面</small>
       </aside>
 
       <section className={styles.workspace}>
@@ -105,7 +147,7 @@ export default function PublishingPage() {
           <div>
             <p className={styles.eyebrow}>YOUTUBE RELEASE DESK</p>
             <h2>公開コントロール</h2>
-            <span>公開日時と公開範囲を管理します。</span>
+            <span>公開日時と公開範囲をYouTubeへ直接反映します。</span>
           </div>
           <strong>{syncLabel}</strong>
         </header>
@@ -136,7 +178,7 @@ export default function PublishingPage() {
             <span className={styles.subtitle}>{active.subtitle}</span>
 
             <label>YouTube動画ID</label>
-            <input value={active.youtubeVideoId || ''} onChange={(event) => updateActive({ youtubeVideoId: event.target.value })} placeholder="例: dQw4w9WgXcQ" />
+            <input value={active.youtubeVideoId || ''} onChange={(event) => updateActive({ youtubeVideoId: event.target.value.trim() })} placeholder="例: dQw4w9WgXcQ" />
 
             <label>公開範囲</label>
             <select value={active.privacyStatus || 'private'} onChange={(event) => updateActive({ privacyStatus: event.target.value as PrivacyStatus })}>
@@ -151,8 +193,11 @@ export default function PublishingPage() {
               {Object.entries(publishLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
 
-            <button className={styles.primary} onClick={schedulePublish} disabled={!active.scheduledAt || active.status !== 'approved'}>公開予約へ登録</button>
-            {active.status !== 'approved' && <small className={styles.warning}>動画承認後に公開予約できます。</small>}
+            <button className={styles.primary} onClick={() => callYouTube('schedule')} disabled={apiBusy || !active.scheduledAt || active.status !== 'approved'}>{apiBusy ? '処理中…' : 'YouTubeへ公開予約'}</button>
+            <button onClick={() => callYouTube('publish_now')} disabled={apiBusy || active.status !== 'approved' || active.privacyStatus === 'private'}>今すぐ公開設定を反映</button>
+            {active.status !== 'approved' && <small className={styles.warning}>動画承認後に公開操作できます。</small>}
+            {active.publishError && <small className={styles.warning}>{active.publishError}</small>}
+            {apiLabel && <small className={styles.warning}>{apiLabel}</small>}
           </aside>}
         </div>
       </section>
