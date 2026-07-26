@@ -1,0 +1,2 @@
+alter table if exists public.sunset_deck_agent_runs add column if not exists updated_at timestamptz not null default now();
+alter table if exists public.sunset_deck_knowledge_edges add column if not exists updated_at timestamptz not null default now();
