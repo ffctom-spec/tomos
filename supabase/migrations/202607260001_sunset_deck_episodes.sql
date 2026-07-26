@@ -1,5 +1,6 @@
 create table if not exists public.sunset_deck_episodes (
   studio_id text not null,
+  owner_id uuid not null references auth.users(id) on delete cascade,
   episode_id bigint not null,
   title text not null,
   subtitle text not null default '',
@@ -12,27 +13,31 @@ create table if not exists public.sunset_deck_episodes (
   note text not null default '',
   preview_url text,
   updated_at timestamptz not null default now(),
-  primary key (studio_id, episode_id)
+  primary key (studio_id, owner_id, episode_id)
 );
 
 alter table public.sunset_deck_episodes enable row level security;
 
--- Temporary MVP policy. Replace with authenticated user policies when login is enabled.
-create policy "sunset deck anon read"
+create policy "sunset deck owner read"
 on public.sunset_deck_episodes for select
-to anon
-using (studio_id = 'sunset-deck');
+to authenticated
+using (auth.uid() = owner_id);
 
-create policy "sunset deck anon insert"
+create policy "sunset deck owner insert"
 on public.sunset_deck_episodes for insert
-to anon
-with check (studio_id = 'sunset-deck');
+to authenticated
+with check (auth.uid() = owner_id);
 
-create policy "sunset deck anon update"
+create policy "sunset deck owner update"
 on public.sunset_deck_episodes for update
-to anon
-using (studio_id = 'sunset-deck')
-with check (studio_id = 'sunset-deck');
+to authenticated
+using (auth.uid() = owner_id)
+with check (auth.uid() = owner_id);
+
+create policy "sunset deck owner delete"
+on public.sunset_deck_episodes for delete
+to authenticated
+using (auth.uid() = owner_id);
 
 create index if not exists sunset_deck_episodes_updated_at_idx
-on public.sunset_deck_episodes (studio_id, updated_at desc);
+on public.sunset_deck_episodes (studio_id, owner_id, updated_at desc);
