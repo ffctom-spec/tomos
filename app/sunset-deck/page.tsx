@@ -1,22 +1,12 @@
 'use client';
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { cloudConfigured, loadCloudEpisodes, saveCloudEpisodes, type SunsetDeckEpisode } from '@/lib/sunset-deck-cloud';
 import styles from './sunset-deck.module.css';
 
-type Status = 'idea' | 'script' | 'production' | 'review' | 'approved';
-type Episode = {
-  id: number;
-  title: string;
-  subtitle: string;
-  series: string;
-  status: Status;
-  duration: string;
-  progress: number;
-  updated: string;
-  hook: string;
-  note: string;
-  previewUrl?: string;
-};
+type Status = SunsetDeckEpisode['status'];
+type Episode = SunsetDeckEpisode;
+type SyncState = 'loading' | 'saving' | 'cloud' | 'local' | 'error';
 
 const seedEpisodes: Episode[] = [
   { id: 1, title: '世界が庭で生き延びた時代', subtitle: 'The Garden That Saved Humanity', series: 'WORLD GARDEN STORIES', status: 'review', duration: '09:20', progress: 86, updated: '本日 06:40', hook: 'もし明日、スーパーから食べ物が消えたら。あなたは何日、生きられますか。', note: '冒頭の引き込み、食育への着地、YUGAWA邸への接続を最終確認。' },
@@ -44,6 +34,14 @@ function toEmbedUrl(url?: string) {
   }
 }
 
+function syncLabel(syncState: SyncState) {
+  if (syncState === 'loading') return '○ 読み込み中';
+  if (syncState === 'saving') return '○ 保存中';
+  if (syncState === 'cloud') return '● クラウド同期済み';
+  if (syncState === 'error') return '△ クラウド接続エラー';
+  return '● 端末に保存済み';
+}
+
 export default function SunsetDeckOS() {
   const [episodes, setEpisodes] = useState<Episode[]>(seedEpisodes);
   const [activeId, setActiveId] = useState(1);
@@ -51,47 +49,88 @@ export default function SunsetDeckOS() {
   const [note, setNote] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
   const [saved, setSaved] = useState(false);
-  const [syncState, setSyncState] = useState<'saved' | 'saving'>('saved');
+  const [hydrated, setHydrated] = useState(false);
+  const [syncState, setSyncState] = useState<SyncState>('loading');
   const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem('sunset-deck-episodes');
-    if (stored) {
-      try { setEpisodes(JSON.parse(stored)); } catch { setEpisodes(seedEpisodes); }
+    let cancelled = false;
+
+    async function hydrate() {
+      const stored = localStorage.getItem('sunset-deck-episodes');
+      let localEpisodes = seedEpisodes;
+      if (stored) {
+        try { localEpisodes = JSON.parse(stored); } catch { localEpisodes = seedEpisodes; }
+      }
+      if (!cancelled) setEpisodes(localEpisodes);
+
+      if (cloudConfigured) {
+        try {
+          const cloudEpisodes = await loadCloudEpisodes();
+          if (!cancelled && cloudEpisodes?.length) {
+            setEpisodes(cloudEpisodes);
+            localStorage.setItem('sunset-deck-episodes', JSON.stringify(cloudEpisodes));
+          }
+          if (!cancelled) setSyncState('cloud');
+        } catch {
+          if (!cancelled) setSyncState('error');
+        }
+      } else if (!cancelled) {
+        setSyncState('local');
+      }
+
+      if (!cancelled) setHydrated(true);
     }
+
+    hydrate();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
     setSyncState('saving');
-    const timer = window.setTimeout(() => {
+    const timer = window.setTimeout(async () => {
       localStorage.setItem('sunset-deck-episodes', JSON.stringify(episodes));
-      setSyncState('saved');
-    }, 250);
+      if (!cloudConfigured) {
+        setSyncState('local');
+        return;
+      }
+      try {
+        await saveCloudEpisodes(episodes);
+        setSyncState('cloud');
+      } catch {
+        setSyncState('error');
+      }
+    }, 500);
     return () => window.clearTimeout(timer);
-  }, [episodes]);
+  }, [episodes, hydrated]);
 
   const active = episodes.find((e) => e.id === activeId) ?? episodes[0];
   const visible = filter === 'all' ? episodes : episodes.filter((e) => e.status === filter);
   const reviewCount = episodes.filter((e) => e.status === 'review').length;
   const approvedCount = episodes.filter((e) => e.status === 'approved').length;
-  const avgProgress = Math.round(episodes.reduce((sum, e) => sum + e.progress, 0) / episodes.length);
+  const avgProgress = episodes.length ? Math.round(episodes.reduce((sum, e) => sum + e.progress, 0) / episodes.length) : 0;
   const morningQueue = useMemo(() => episodes.filter((e) => ['review', 'production'].includes(e.status)).slice(0, 3), [episodes]);
-  const embedUrl = toEmbedUrl(active.previewUrl);
+  const embedUrl = toEmbedUrl(active?.previewUrl);
 
   useEffect(() => {
+    if (!active) return;
     setNote(active.note);
     setPreviewUrl(active.previewUrl ?? '');
-  }, [active.id, active.note, active.previewUrl]);
+  }, [active?.id, active?.note, active?.previewUrl]);
 
   function updateActive(patch: Partial<Episode>) {
+    if (!active) return;
     setEpisodes((current) => current.map((e) => e.id === active.id ? { ...e, ...patch, updated: 'たった今' } : e));
   }
 
   function changeStatus(status: Status) {
+    if (!active) return;
     updateActive({ status, progress: status === 'approved' ? 100 : active.progress });
   }
 
   function saveReview() {
+    if (!active) return;
     updateActive({ note: note.trim() || active.note, previewUrl: previewUrl.trim() });
     setSaved(true);
     window.setTimeout(() => setSaved(false), 1600);
@@ -121,6 +160,8 @@ export default function SunsetDeckOS() {
     event.target.value = '';
   }
 
+  if (!active) return null;
+
   return (
     <main className={styles.page}>
       <aside className={styles.sidebar}>
@@ -138,7 +179,7 @@ export default function SunsetDeckOS() {
         <header className={styles.header}>
           <div><p className={styles.eyebrow}>MORNING CONTROL DESK</p><h2>おはようございます、トムさん。</h2><p>通勤中に、再生・修正・承認まで完了できます。</p></div>
           <div className={styles.headerActions}>
-            <span className={styles.syncBadge}>{syncState === 'saved' ? '● 端末に保存済み' : '○ 保存中'}</span>
+            <span className={styles.syncBadge}>{syncLabel(syncState)}</span>
             <button onClick={exportData} className={styles.ghost}>バックアップ</button>
             <button onClick={() => importRef.current?.click()} className={styles.ghost}>復元</button>
             <input ref={importRef} type="file" accept="application/json" onChange={importData} hidden />
