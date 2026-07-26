@@ -7,6 +7,7 @@ import ShortPreview from './ShortPreview';
 import StoryboardDeck from './StoryboardDeck';
 import YouTubeUploadPanel from './YouTubeUploadPanel';
 import styles from './sunset-deck.module.css';
+import thumbStyles from './thumbnail.module.css';
 
 type Status = SunsetDeckEpisode['status'];
 type Episode = SunsetDeckEpisode;
@@ -172,12 +173,12 @@ export default function SunsetDeckOS() {
         <div className={styles.mainGrid}>
           <section className={styles.library}>
             <div className={styles.sectionTitle}><div><p className={styles.eyebrow}>EPISODE LIBRARY</p><h3>エピソード一覧</h3></div><div className={styles.filters}>{(['all', 'review', 'production', 'script', 'idea', 'approved'] as const).map((item) => <button key={item} onClick={() => setFilter(item)} className={filter === item ? styles.filterActive : ''}>{item === 'all' ? 'すべて' : statusLabel[item]}</button>)}</div></div>
-            <p className={styles.thumbnailHint}>サムネイルをクリックすると、9:16ショート版を確認できます。</p>
-            <div className={styles.episodeList}>{visible.map((item) => <article key={item.id} onClick={() => setActiveId(item.id)} className={active.id === item.id ? styles.episodeActive : ''}><EpisodeThumbnail episodeId={item.id} compact onClick={() => { setActiveId(item.id); setShortEpisodeId(item.id); }} /><div className={styles.episodeCopy}><small>{item.series}</small><strong>{item.title}</strong><span>{item.subtitle}</span></div><div className={styles.episodeMeta}><span className={`${styles.badge} ${styles[item.status]}`}>{statusLabel[item.status]}</span><small>{item.updated}</small></div></article>)}</div>
+            <p className={thumbStyles.hint}>サムネイルをクリックすると、9:16ショート版を確認できます。</p>
+            <div className={styles.episodeList}>{visible.map((item) => <article key={item.id} onClick={() => setActiveId(item.id)} className={`${thumbStyles.episodeCard} ${active.id === item.id ? thumbStyles.episodeCardActive : ''}`}><EpisodeThumbnail episodeId={item.id} compact onClick={() => { setActiveId(item.id); setShortEpisodeId(item.id); }} /><div className={styles.episodeCopy}><small>{item.series}</small><strong>{item.title}</strong><span>{item.subtitle}</span></div><div className={styles.episodeMeta}><span className={`${styles.badge} ${styles[item.status]}`}>{statusLabel[item.status]}</span><small>{item.updated}</small></div></article>)}</div>
           </section>
 
           <div className={styles.reviewWorkspace}>
-            <section className={styles.activeThumbnail}><div><p className={styles.eyebrow}>THUMBNAIL DESIGN</p><h3>YouTubeサムネイル</h3><span>クリックでショート版プレビュー</span></div><EpisodeThumbnail episodeId={active.id} onClick={() => setShortEpisodeId(active.id)} /></section>
+            <section className={thumbStyles.activeThumbnail}><div><p className={thumbStyles.eyebrow}>THUMBNAIL DESIGN</p><h3>YouTubeサムネイル</h3><span>クリックでショート版プレビュー</span></div><EpisodeThumbnail episodeId={active.id} onClick={() => setShortEpisodeId(active.id)} /></section>
             <StoryboardDeck episodeId={active.id} title={active.title} subtitle={active.subtitle} series={active.series} status={statusLabel[active.status]} onApprove={() => changeStatus('approved')} onReturn={() => changeStatus('production')} />
 
             <section className={styles.deliveryPanel}>
